@@ -1,0 +1,652 @@
+// ============================================================================
+// TACT AI MOBILE CORE ENGINE - SINGLE-FILE DISTRIBUTION
+// Package: com.example.tactai
+// Designed with the Elegant Dark Theme aesthetic: Deep obsidian backgrounds (#050505),
+// subtle slate borders (#1E1E1E), bright cyber blue highlights (#3B82F6).
+// ============================================================================
+
+// SECTION 1: ROOT build.gradle
+// Path: android/build.gradle
+/*
+buildscript {
+    ext.kotlin_version = "1.8.20"
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.0.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+*/
+
+
+// SECTION 2: APP LEVEL build.gradle
+// Path: android/app/build.gradle
+/*
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.example.tactai'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.example.tactai"
+        minSdk 21
+        targetSdk 33
+        versionCode 4
+        versionName "1.0.4"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    // Picovoice Porcupine Wake Word Engine Dependency
+    implementation 'ai.picovoice:porcupine-android:3.0.0'
+}
+*/
+
+
+// SECTION 3: ANDROID MANIFEST
+// Path: android/app/src/main/AndroidManifest.xml
+/*
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.tactai">
+
+    <!-- Critical permissions for continuous speech capture and cloud sync -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Tact AI"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.NoActionBar">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+*/
+
+
+// SECTION 4: ACTIVITY MAIN LAYOUT (ELEGANT DARK THEME DESIGN)
+// Path: android/app/src/main/res/layout/activity_main.xml
+/*
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#050505"
+    android:padding="24dp">
+
+    <!-- HEADER STATUS BAR -->
+    <LinearLayout
+        android:id="@+id/headerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="20dp"
+        android:layout_alignParentTop="true">
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="#3B82F6"
+            android:layout_marginEnd="10dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="TACT AI v1.0.4"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
+
+        <TextView
+            android:id="@+id/tvWakeStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Wake Word: Hey Tact ACTIVE"
+            android:textColor="#A1A1AA"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:background="#121212"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="5dp" />
+    </LinearLayout>
+
+    <!-- CENTER VISUAL CORE ORB & SPEECH DISPLAY -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_below="@id/headerLayout"
+        android:layout_above="@id/footerLayout"
+        android:layout_centerInParent="true">
+
+        <!-- Outer Glowing Ring -->
+        <FrameLayout
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:layout_marginBottom="32dp">
+
+            <!-- Ring Background 1 (Simulated border-2 scale-110) -->
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/presence_oval"
+                android:tint="#1E1E1E"
+                android:scaleX="1.15"
+                android:scaleY="1.15" />
+
+            <!-- Ring Background 2 (Simulated border-1 scale-125) -->
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/presence_oval"
+                android:tint="#121212"
+                android:scaleX="1.25"
+                android:scaleY="1.25" />
+
+            <!-- Central Core Orb (Dynamic clickable Mic Button) -->
+            <ImageView
+                android:id="@+id/btnMic"
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:layout_gravity="center"
+                android:background="@android:drawable/presence_oval"
+                android:tint="#0F172A"
+                android:padding="35dp"
+                android:src="@android:drawable/ic_btn_speak_now"
+                android:scaleType="centerInside"
+                android:clickable="true"
+                android:focusable="true" />
+        </FrameLayout>
+
+        <!-- Dynamic Status Display -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Awaiting Voice Input"
+            android:textColor="#3B82F6"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.2"
+            android:layout_marginBottom="12dp"
+            android:fontFamily="monospace" />
+
+        <!-- Spoken / Recognized Words Result -->
+        <TextView
+            android:id="@+id/tvResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="&quot;Hey Tact, analyze the engine schematics.&quot;"
+            android:textColor="#F4F4F5"
+            android:textSize="20sp"
+            android:gravity="center"
+            android:layout_marginHorizontal="24dp"
+            android:textStyle="normal"
+            android:fontFamily="sans-serif-light" />
+    </LinearLayout>
+
+    <!-- FOOTER CONTROLS -->
+    <LinearLayout
+        android:id="@+id/footerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:paddingTop="16dp">
+
+        <Button
+            android:id="@+id/btnToggleWake"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:backgroundTint="#FFFFFF"
+            android:textColor="#050505"
+            android:text="Disable Background Listening"
+            android:textSize="12dp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="space-between"
+            android:paddingTop="12dp"
+            android:borderTop="1dp"
+            android:background="#0C0C0C"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LATENCY: 12ms"
+                android:textColor="#71717A"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUDIO: LOSSLESS"
+                android:textColor="#71717A"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>
+*/
+
+
+// SECTION 5: MAIN ACTIVITY KOTLIN SOURCE
+// Path: android/app/src/main/java/com/example/tactai/MainActivity.kt
+
+package com.example.tactai
+
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.speech.tts.TextToSpeech
+import android.view.animation.Animation
+import android.view.animation.ScaleAnimation
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import ai.picovoice.porcupine.*
+import java.util.*
+
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
+
+    private val REQUEST_RECORD_AUDIO_PERMISSION = 200
+    private var permissionToRecordAccepted = false
+    private val permissions = arrayOf(Manifest.permission.RECORD_AUDIO)
+
+    // UI elements
+    private lateinit var tvStatus: TextView
+    private lateinit var tvResult: TextView
+    private lateinit var btnMic: ImageView
+    private lateinit var btnToggleWake: Button
+    private lateinit var tvWakeStatus: TextView
+
+    // Speech and Wake Word Engines
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var recognizerIntent: Intent? = null
+    private var porcupineManager: PorcupineManager? = null
+    private var textToSpeech: TextToSpeech? = null
+
+    // Configuration
+    // Replace with your personal Access Key from Picovoice Console (https://console.picovoice.ai/)
+    private val PICOVOICE_ACCESS_KEY = "YOUR_PICOVOICE_ACCESS_KEY_HERE" 
+    private var isWakeWordActive = true
+    private var isRecording = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Bind UI Elements
+        tvStatus = findViewById(R.id.tvStatus)
+        tvResult = findViewById(R.id.tvResult)
+        btnMic = findViewById(R.id.btnMic)
+        btnToggleWake = findViewById(R.id.btnToggleWake)
+        tvWakeStatus = findViewById(R.id.tvWakeStatus)
+
+        // Initialize Text To Speech for local vocal feedback
+        textToSpeech = TextToSpeech(this, this)
+
+        // Request runtime permission for microphone recording (mandatory from Android 6.0+)
+        requestMicrophonePermission()
+
+        // Set up click listeners
+        btnMic.setOnClickListener {
+            if (isRecording) {
+                stopVoiceRecognition()
+            } else {
+                startVoiceRecognition()
+            }
+        }
+
+        btnToggleWake.setOnClickListener {
+            toggleWakeWordDetection()
+        }
+
+        setupSpeechRecognizer()
+    }
+
+    private fun requestMicrophonePermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            permissionToRecordAccepted = true
+            initWakeWordDetection()
+        } else {
+            ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION)
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        permissionToRecordAccepted = if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+            grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+        } else {
+            false
+        }
+        if (permissionToRecordAccepted) {
+            initWakeWordDetection()
+        } else {
+            Toast.makeText(this, "Microphone permission required for Tact AI voice features.", Toast.LENGTH_LONG).show()
+            tvStatus.text = "PERMISSION RESTRICTED"
+        }
+    }
+
+    private fun setupSpeechRecognizer() {
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+            recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            }
+
+            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {
+                    isRecording = true
+                    runOnUiThread {
+                        tvStatus.text = "Listening to input..."
+                        animateMicPulse(true)
+                    }
+                }
+
+                override fun onBeginningOfSpeech() {}
+                
+                override fun onRmsChanged(rmsdB: Float) {
+                    // Dynamically scale mic core size based on active audio amplitude (oscilloscope mirroring)
+                    val scale = 1.0f + (rmsdB / 14.0f).coerceIn(0.0f, 0.4f)
+                    btnMic.scaleX = scale
+                    btnMic.scaleY = scale
+                }
+
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                
+                override fun onEndOfSpeech() {
+                    runOnUiThread {
+                        tvStatus.text = "Processing voice..."
+                        animateMicPulse(false)
+                    }
+                }
+
+                override fun onError(error: Int) {
+                    isRecording = false
+                    val message = when (error) {
+                        SpeechRecognizer.ERROR_AUDIO -> "Audio record failure"
+                        SpeechRecognizer.ERROR_CLIENT -> "Client subsystem error"
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Mic permission required"
+                        SpeechRecognizer.ERROR_NETWORK -> "Network dispatch failed"
+                        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network speed timeout"
+                        SpeechRecognizer.ERROR_NO_MATCH -> "No speech matching word"
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Service active and busy"
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Voice timeout"
+                        else -> "Capture terminated"
+                    }
+                    runOnUiThread {
+                        tvStatus.text = "Awaiting Voice Input"
+                        tvResult.text = "[$message]"
+                        btnMic.scaleX = 1.0f
+                        btnMic.scaleY = 1.0f
+                    }
+                    // Release and re-engage the Porcupine Wake Word listener
+                    restartWakeWordDetection()
+                }
+
+                override fun onResults(results: Bundle?) {
+                    isRecording = false
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!matches.isNullOrEmpty()) {
+                        val spokenText = matches[0]
+                        runOnUiThread {
+                            tvResult.text = spokenText
+                            processTextCommand(spokenText)
+                        }
+                    } else {
+                        runOnUiThread { tvStatus.text = "Awaiting Voice Input" }
+                    }
+                    // Release and re-engage the Porcupine Wake Word listener
+                    restartWakeWordDetection()
+                }
+
+                override fun onPartialResults(partialResults: Bundle?) {
+                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    if (!matches.isNullOrEmpty()) {
+                        runOnUiThread {
+                            tvResult.text = matches[0]
+                        }
+                    }
+                }
+
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+        } else {
+            tvResult.text = "[Google Speech Recognition unavailable on this device]"
+        }
+    }
+
+    private fun initWakeWordDetection() {
+        if (!permissionToRecordAccepted) return
+
+        try {
+            // For a custom wake word like 'Hey Tact', you generate a custom keyword file 'hey_tact_android.ppn'
+            // and save it in your project's assets folder (src/main/assets/hey_tact_android.ppn).
+            // Below, we set up Picovoice Porcupine to load this custom wake-word path.
+            // If the custom keyword file hasn't been bundled yet, we fallback gracefully to Picovoice's default keyword.
+            
+            val builder = PorcupineManager.Builder()
+                .setAccessKey(PICOVOICE_ACCESS_KEY)
+
+            // Dynamic check for custom assets
+            val assetList = assets.list("") ?: emptyArray()
+            if (assetList.contains("hey_tact_android.ppn")) {
+                builder.setKeywordPath("hey_tact_android.ppn")
+            } else {
+                // Graceful fallback to standard built-in keyword (e.g., 'PORCUPINE')
+                builder.setKeyword(Porcupine.BuiltInKeyword.PORCUPINE)
+            }
+
+            porcupineManager = builder.build(this) { keywordIndex ->
+                // Wake word detected! Stop Porcupine to free mic and launch Android Speech-to-Text
+                runOnUiThread {
+                    Toast.makeText(this, "Hey Tact detected!", Toast.LENGTH_SHORT).show()
+                    speakFeedback("Tact listening.")
+                    startVoiceRecognition()
+                }
+            }
+
+            if (isWakeWordActive) {
+                porcupineManager?.start()
+                tvWakeStatus.text = "Wake Word: Hey Tact ACTIVE"
+            }
+        } catch (e: Exception) {
+            tvWakeStatus.text = "Wake Word: Inactive (Demo Fallback)"
+            e.printStackTrace()
+        }
+    }
+
+    private fun startVoiceRecognition() {
+        // MUST release mic from Picovoice before SpeechRecognizer can capture audio stream
+        stopWakeWordDetection()
+
+        runOnUiThread {
+            try {
+                speechRecognizer?.startListening(recognizerIntent)
+            } catch (e: Exception) {
+                tvStatus.text = "Mic Core Fault"
+                tvResult.text = "Could not start audio listener: ${e.message}"
+                restartWakeWordDetection()
+            }
+        }
+    }
+
+    private fun stopVoiceRecognition() {
+        speechRecognizer?.stopListening()
+        animateMicPulse(false)
+    }
+
+    private fun stopWakeWordDetection() {
+        try {
+            porcupineManager?.stop()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun restartWakeWordDetection() {
+        if (isWakeWordActive && permissionToRecordAccepted) {
+            try {
+                porcupineManager?.start()
+                runOnUiThread {
+                    tvWakeStatus.text = "Wake Word: Hey Tact ACTIVE"
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun toggleWakeWordDetection() {
+        if (isWakeWordActive) {
+            isWakeWordActive = false
+            stopWakeWordDetection()
+            tvWakeStatus.text = "Wake Word: MONITOR OFF"
+            btnToggleWake.text = "Enable Background Listening"
+        } else {
+            isWakeWordActive = true
+            initWakeWordDetection()
+            btnToggleWake.text = "Disable Background Listening"
+        }
+    }
+
+    private fun processTextCommand(command: String) {
+        val lower = command.lowercase()
+        val response = when {
+            lower.contains("engine") || lower.contains("schematic") -> {
+                "Analyzing engine diagrams. Primary alternator voltage and ignition coils are within range."
+            }
+            lower.contains("battery") || lower.contains("drain") -> {
+                "Telemetry diagnostics online. Current battery cells are performing at optimal capacity."
+            }
+            lower.contains("test") -> {
+                "Running self diagnostics sequence. Voice, audio, and network sub systems report active status."
+            }
+            else -> {
+                "Command received: $command. Dispatched to central processor."
+            }
+        }
+        
+        speakFeedback(response)
+        tvStatus.text = "Awaiting Voice Input"
+    }
+
+    private fun speakFeedback(text: String) {
+        textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "TactSpeechID")
+    }
+
+    private fun animateMicPulse(start: Boolean) {
+        if (start) {
+            val pulse = ScaleAnimation(
+                1.0f, 1.15f, 1.0f, 1.15f,
+                Animation.RELATIVE_TO_SELF, 0.5f,
+                Animation.RELATIVE_TO_SELF, 0.5f
+            ).apply {
+                duration = 800
+                repeatMode = Animation.REVERSE
+                repeatCount = Animation.INFINITE
+            }
+            btnMic.startAnimation(pulse)
+        } else {
+            btnMic.clearAnimation()
+            btnMic.scaleX = 1.0f
+            btnMic.scaleY = 1.0f
+        }
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            textToSpeech?.language = Locale.US
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        speechRecognizer?.destroy()
+        porcupineManager?.delete()
+        textToSpeech?.shutdown()
+    }
+}

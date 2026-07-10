@@ -1,0 +1,6 @@
+{
+  "name": "Tact AI",
+  "description": "An intelligent voice-activated diagnostic assistant and virtual repair toolbox with Aegis Autopilot daemon monitoring and automated Google Sheets log archiving.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

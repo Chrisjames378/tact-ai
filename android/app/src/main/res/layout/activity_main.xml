@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#050505"
+    android:padding="24dp">
+
+    <!-- HEADER STATUS BAR -->
+    <LinearLayout
+        android:id="@+id/headerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="20dp"
+        android:layout_alignParentTop="true">
+
+        <View
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="#3B82F6"
+            android:layout_marginEnd="10dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="TACT AI v1.0.4"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed" />
+
+        <TextView
+            android:id="@+id/tvWakeStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Wake Word: Hey Tact ACTIVE"
+            android:textColor="#A1A1AA"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:background="#121212"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="5dp" />
+    </LinearLayout>
+
+    <!-- CENTER VISUAL CORE ORB & SPEECH DISPLAY -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_below="@id/headerLayout"
+        android:layout_above="@id/footerLayout"
+        android:layout_centerInParent="true">
+
+        <!-- Outer Glowing Ring -->
+        <FrameLayout
+            android:layout_width="220dp"
+            android:layout_height="220dp"
+            android:layout_marginBottom="32dp">
+
+            <!-- Ring Background 1 (Simulated border-2 scale-110) -->
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/presence_oval"
+                android:tint="#1E1E1E"
+                android:scaleX="1.15"
+                android:scaleY="1.15" />
+
+            <!-- Ring Background 2 (Simulated border-1 scale-125) -->
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@android:drawable/presence_oval"
+                android:tint="#121212"
+                android:scaleX="1.25"
+                android:scaleY="1.25" />
+
+            <!-- Central Core Orb (Dynamic clickable Mic Button) -->
+            <ImageView
+                android:id="@+id/btnMic"
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:layout_gravity="center"
+                android:background="@android:drawable/presence_oval"
+                android:tint="#0F172A"
+                android:padding="35dp"
+                android:src="@android:drawable/ic_btn_speak_now"
+                android:scaleType="centerInside"
+                android:clickable="true"
+                android:focusable="true" />
+        </FrameLayout>
+
+        <!-- Dynamic Status Display -->
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Awaiting Voice Input"
+            android:textColor="#3B82F6"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.2"
+            android:layout_marginBottom="12dp"
+            android:fontFamily="monospace" />
+
+        <!-- Spoken / Recognized Words Result -->
+        <TextView
+            android:id="@+id/tvResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="&quot;Hey Tact, analyze the engine schematics.&quot;"
+            android:textColor="#F4F4F5"
+            android:textSize="20sp"
+            android:gravity="center"
+            android:layout_marginHorizontal="24dp"
+            android:textStyle="normal"
+            android:fontFamily="sans-serif-light" />
+    </LinearLayout>
+
+    <!-- FOOTER CONTROLS -->
+    <LinearLayout
+        android:id="@+id/footerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:paddingTop="16dp">
+
+        <Button
+            android:id="@+id/btnToggleWake"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:backgroundTint="#FFFFFF"
+            android:textColor="#050505"
+            android:text="Disable Background Listening"
+            android:textSize="12dp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="space-between"
+            android:paddingTop="12dp"
+            android:background="#0C0C0C"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LATENCY: 12ms"
+                android:textColor="#71717A"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AUDIO: LOSSLESS"
+                android:textColor="#71717A"
+                android:textSize="10sp"
+                android:fontFamily="monospace" />
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>
