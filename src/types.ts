@@ -36,4 +36,4 @@ export interface DiagnosticData {
   };
 }
 
-export type ToolType = "mic_analyzer" | "speaker_test" | "pixel_test" | "network_test" | "system_info" | "device_fixer" | "node_upgrade" | "vires_shield" | "stress_test";
+export type ToolType = "mic_analyzer" | "speaker_test" | "pixel_test" | "network_test" | "system_info" | "device_fixer" | "node_upgrade" | "vires_shield" | "stress_test" | "thermal_map";
