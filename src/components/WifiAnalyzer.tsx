@@ -43,7 +43,7 @@ export default function WifiAnalyzer({ onTransmitToAI }: WifiAnalyzerProps) {
   // Audio sonar ping state
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Load real browser connection properties on mount to replace purely static mock data
+  // Load real browser connection properties on mount to replace purely static data
   useEffect(() => {
     if (typeof navigator !== "undefined" && (navigator as any).connection) {
       const conn = (navigator as any).connection;

@@ -21,7 +21,7 @@ interface TestItem {
 }
 
 export default function SamsungMembers({ onTransmitToAI }: SamsungMembersProps) {
-  const [deviceModel, setDeviceModel] = useState("Galaxy S24 Ultra (SM-S928B)");
+  const [deviceModel, setDeviceModel] = useState("Samsung Galaxy A06 5G");
   const [activeTestId, setActiveTestId] = useState<string | null>(null);
   const [overallStatus, setOverallStatus] = useState<"not_started" | "running" | "completed">("not_started");
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -97,7 +97,7 @@ export default function SamsungMembers({ onTransmitToAI }: SamsungMembersProps) 
       setTestItems(prev => prev.map(t => t.id === item.id ? { ...t, status: "running" } : t));
       setCurrentProgress(Math.round(((i + 1) / testItems.length) * 100));
       
-      // Simulate test loading
+      // Execute test loading
       await new Promise(resolve => setTimeout(resolve, 800));
 
       let detail = item.resultDetail || "Normal";

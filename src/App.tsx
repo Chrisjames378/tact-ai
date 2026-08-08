@@ -11,6 +11,8 @@ import AgentHub from "./components/AgentHub";
 import WebScraper from "./components/WebScraper";
 import SamsungMembers from "./components/SamsungMembers";
 import WifiAnalyzer from "./components/WifiAnalyzer";
+import SystemMonitor from "./components/SystemMonitor";
+import AiXAds from "./components/AiXAds";
 import { Message, DiagnosticData } from "./types";
 import { initAuth, googleSignIn, logout, setAccessToken } from "./utils/googleAuth";
 import { logRepairToGoogleSheets } from "./utils/sheetsLogger";
@@ -449,6 +451,50 @@ export default function App() {
       return;
     }
 
+    // COMMAND PARSING LAYER
+    const lowerPrompt = prompt.toLowerCase();
+    
+    if (lowerPrompt.includes("mute assistant") || lowerPrompt.includes("mute voice") || lowerPrompt.includes("turn off voice")) {
+      setIsMuted(true);
+      stopSpeaking();
+      const muteMsg = { id: `mute-${Date.now()}`, role: "assistant" as const, text: "Assistant voice muted.", timestamp: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, { id: `msg-${Date.now()}`, role: "user" as const, text: prompt, timestamp: new Date().toLocaleTimeString() }, muteMsg]);
+      setInputText("");
+      return;
+    }
+
+    if (lowerPrompt.includes("unmute assistant") || lowerPrompt.includes("unmute voice") || lowerPrompt.includes("turn on voice")) {
+      setIsMuted(false);
+      const unmuteMsg = { id: `unmute-${Date.now()}`, role: "assistant" as const, text: "Assistant voice unmuted.", timestamp: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, { id: `msg-${Date.now()}`, role: "user" as const, text: prompt, timestamp: new Date().toLocaleTimeString() }, unmuteMsg]);
+      setInputText("");
+      // Using direct speech synthesis here because isMuted state might not be updated yet for speakResponse
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance("Assistant voice unmuted.");
+        window.speechSynthesis.speak(utterance);
+      }
+      return;
+    }
+
+    if (lowerPrompt.includes("open repair tools") || lowerPrompt.includes("open workbench") || lowerPrompt.includes("repair tool") || lowerPrompt.includes("open toolbox")) {
+      setRightPanelTab("workbench");
+      const repairMsg = { id: `rep-${Date.now()}`, role: "assistant" as const, text: "Opening Repair Workbench.", timestamp: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, { id: `msg-${Date.now()}`, role: "user" as const, text: prompt, timestamp: new Date().toLocaleTimeString() }, repairMsg]);
+      setInputText("");
+      speakResponse("Opening repair tools.");
+      return;
+    }
+
+    if (lowerPrompt.includes("check diagnostics") || lowerPrompt.includes("run diagnostics") || lowerPrompt.includes("hardware dashboard")) {
+      setRightPanelTab("workbench");
+      // Actually there's no way to force a specific sub-tool yet from App level easily, but setting to workbench is close enough.
+      const diagMsg = { id: `diag-${Date.now()}`, role: "assistant" as const, text: "Opening Hardware Dashboard and readying diagnostics.", timestamp: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, { id: `msg-${Date.now()}`, role: "user" as const, text: prompt, timestamp: new Date().toLocaleTimeString() }, diagMsg]);
+      setInputText("");
+      speakResponse("Checking diagnostics.");
+      return;
+    }
+
     const userMessageId = `msg-${Date.now()}`;
     const newUserMessage: Message = {
       id: userMessageId,
@@ -610,6 +656,9 @@ export default function App() {
         <div className="absolute bottom-[20%] right-[20%] w-[600px] h-[600px] bg-blue-900/5 rounded-full blur-[160px]"></div>
       </div>
       
+      {/* AI-X Sponsored Hardware & Partner Ticker */}
+      <AiXAds />
+
       {/* 1. Header Bar */}
       <header className="h-20 flex items-center justify-between px-6 glass-header z-10">
         <div className="flex items-center gap-3">
@@ -1079,7 +1128,8 @@ export default function App() {
                 onToggleLocalOnly={handleToggleLocalOnly}
               />
             ) : rightPanelTab === "workbench" ? (
-              <RepairToolbox 
+              <RepairToolbox
+                googleToken={googleToken} 
                 onSendDiagnostics={handleReceiveDiagnostics}
                 isRecording={isRecording}
                 isNodeOnline={isNodeOnline}
@@ -1186,26 +1236,7 @@ export default function App() {
           <span>|</span>
           <span>SSL: LOCAL PROXY</span>
         </div>
-        <div className="flex gap-12 text-[10px]">
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-zinc-500 tracking-tighter">Processing Power</span>
-            <div className="flex gap-1">
-              <div className="w-4 h-1 bg-blue-500"></div>
-              <div className="w-4 h-1 bg-blue-500"></div>
-              <div className="w-4 h-1 bg-blue-500"></div>
-              <div className="w-4 h-1 bg-zinc-850"></div>
-              <div className="w-4 h-1 bg-zinc-850"></div>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-zinc-500 tracking-tighter">Network Latency</span>
-            <span className="text-sm font-mono text-zinc-300">12ms</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-zinc-500 tracking-tighter">Audio Fidelity</span>
-            <span className="text-sm font-mono text-zinc-300 underline underline-offset-4 decoration-zinc-700">LOSSLESS</span>
-          </div>
-        </div>
+        <SystemMonitor />
         <div className="flex items-center gap-4 text-[10px]">
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />

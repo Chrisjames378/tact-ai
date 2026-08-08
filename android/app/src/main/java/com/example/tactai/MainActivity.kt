@@ -160,6 +160,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                         tvResult.text = "[$message]"
                         btnMic.scaleX = 1.0f
                         btnMic.scaleY = 1.0f
+                        speakFeedback(message)
                     }
                     // Release and re-engage the Porcupine Wake Word listener
                     restartWakeWordDetection()
@@ -243,6 +244,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         runOnUiThread {
             try {
+                speakFeedback("Activating microphone.")
                 speechRecognizer?.startListening(recognizerIntent)
             } catch (e: Exception) {
                 tvStatus.text = "Mic Core Fault"
@@ -255,6 +257,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun stopVoiceRecognition() {
         speechRecognizer?.stopListening()
         animateMicPulse(false)
+        speakFeedback("Microphone deactivated.")
     }
 
     private fun stopWakeWordDetection() {
@@ -284,16 +287,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             stopWakeWordDetection()
             tvWakeStatus.text = "Wake Word: MONITOR OFF"
             btnToggleWake.text = "Enable Background Listening"
+            speakFeedback("Background listening disabled.")
         } else {
             isWakeWordActive = true
             initWakeWordDetection()
             btnToggleWake.text = "Disable Background Listening"
+            speakFeedback("Background listening enabled.")
         }
     }
 
     private fun processTextCommand(command: String) {
         val lower = command.lowercase()
         val response = when {
+            lower.contains("repair") || lower.contains("tool") -> {
+                "Opening repair tools. Initializing diagnostic tool set."
+            }
             lower.contains("engine") || lower.contains("schematic") -> {
                 "Analyzing engine diagrams. Primary alternator voltage and ignition coils are within range."
             }

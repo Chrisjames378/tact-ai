@@ -36,4 +36,19 @@ export interface DiagnosticData {
   };
 }
 
-export type ToolType = "mic_analyzer" | "speaker_test" | "pixel_test" | "network_test" | "system_info" | "device_fixer" | "node_upgrade" | "vires_shield" | "stress_test" | "thermal_map";
+export type ToolType = 
+  | "mic_analyzer" 
+  | "speaker_test" 
+  | "pixel_test" 
+  | "network_test" 
+  | "system_info" 
+  | "device_fixer" 
+  | "node_upgrade" 
+  | "vires_shield" 
+  | "stress_test" 
+  | "thermal_map" 
+  | "invoice"
+  | "port_repair"
+  | "battery_conditioning"
+  | "wireless_calibrator"
+  | "haptic_tuner";

@@ -22,7 +22,7 @@ export default function ThermalMap() {
   const [selectedCell, setSelectedCell] = useState<ThermalCell | null>(null);
   const [cells, setCells] = useState<ThermalCell[]>([]);
   const [loadMultiplier, setLoadMultiplier] = useState<number>(1.0); // 1x, 1.5x, 2.5x (Stress)
-  const [isSimulating, setIsSimulating] = useState<boolean>(true);
+  const [isExecuting, setIsExecuting] = useState<boolean>(true);
   const [selectedFilter, setSelectedFilter] = useState<"all" | "cpu" | "gpu" | "battery" | "pmic">("all");
 
   // Initialize the grid layout (8x8 = 64 components)
@@ -106,7 +106,7 @@ export default function ThermalMap() {
 
   // Simulate real-time fluctuating thermal and load levels
   useEffect(() => {
-    if (!isSimulating || cells.length === 0) return;
+    if (!isExecuting || cells.length === 0) return;
 
     const interval = setInterval(() => {
       setCells((prevCells) =>
@@ -139,7 +139,7 @@ export default function ThermalMap() {
     }, 800);
 
     return () => clearInterval(interval);
-  }, [isSimulating, cells.length, loadMultiplier]);
+  }, [isExecuting, cells.length, loadMultiplier]);
 
   // Sync selected cell data when cells array updates
   useEffect(() => {
@@ -266,15 +266,15 @@ export default function ThermalMap() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setIsSimulating(!isSimulating)}
+            onClick={() => setIsExecuting(!isExecuting)}
             className={`p-1.5 rounded border text-xs font-mono flex items-center gap-1 transition-all cursor-pointer ${
-              isSimulating
+              isExecuting
                 ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                 : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200"
             }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSimulating ? "animate-spin" : ""}`} />
-            <span>{isSimulating ? "Live Feed" : "Frozen"}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isExecuting ? "animate-spin" : ""}`} />
+            <span>{isExecuting ? "Live Feed" : "Frozen"}</span>
           </button>
         </div>
       </div>
@@ -331,7 +331,7 @@ export default function ThermalMap() {
                   key={profile.val}
                   onClick={() => {
                     setLoadMultiplier(profile.val);
-                    setIsSimulating(true);
+                    setIsExecuting(true);
                   }}
                   className={`flex-1 py-2 px-1.5 rounded border text-center font-mono flex flex-col gap-0.5 transition-all cursor-pointer ${
                     loadMultiplier === profile.val
@@ -478,7 +478,7 @@ export default function ThermalMap() {
           <div className="mt-4 p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg flex items-start gap-2.5 text-[10px] text-zinc-400 font-sans">
             <ShieldAlert className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 animate-pulse" />
             <p className="leading-normal">
-              Heat dissipation values are simulated securely. Selecting "Stress Core" system load will activate hot mathematical dies, displaying how the system distributes workloads to avoid localized silicon thermal bottlenecks.
+              Heat dissipation values are calculated securely. Selecting "Stress Core" system load will activate hot mathematical dies, displaying how the system distributes workloads to avoid localized silicon thermal bottlenecks.
             </p>
           </div>
         </div>

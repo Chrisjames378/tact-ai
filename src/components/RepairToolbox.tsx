@@ -1,18 +1,28 @@
+import InvoiceTab from "./InvoiceTab";
 import React, { useState, useEffect, useRef } from "react";
 import { 
   Activity, Volume2, Monitor, Wifi, ShieldAlert, Cpu, Battery, 
   BatteryCharging, Send, HelpCircle, ShieldCheck, Layers, Zap, 
   Play, ArrowRight, Clock, Sparkles, AlertCircle, Check, Settings, Shield,
-  Flame, Gauge, Download, Thermometer
+  Flame, Gauge, Download, Thermometer, Printer, FileText, Cloud, Radio, Droplets
 } from "lucide-react";
 import { DiagnosticData, ToolType } from "../types";
+import { PrintableLogTemplate } from "./PrintableLogTemplate";
+import { generatePdfFromElement } from "../utils/pdfGenerator";
+import { uploadPdfToDrive } from "../utils/driveUploader";
+import { getAccessToken } from "../utils/googleAuth";
 import HardwareDashboard from "./HardwareDashboard";
 import ThermalMap from "./ThermalMap";
+import PortRepairTool from "./PortRepairTool";
+import BatteryConditioningTool from "./BatteryConditioningTool";
+import WirelessCalibratorTool from "./WirelessCalibratorTool";
+import HapticTunerTool from "./HapticTunerTool";
 
 interface RepairToolboxProps {
   onSendDiagnostics: (data: DiagnosticData) => void;
   isRecording: boolean;
   isNodeOnline?: boolean;
+  googleToken?: string | null;
   nodeVersion?: string;
   onNodeOnlineChange?: (online: boolean) => void;
   onNodeUpgrade?: (newVersion: string, upgradeLogs: string) => void;
@@ -23,6 +33,7 @@ export default function RepairToolbox({
   onSendDiagnostics, 
   isRecording,
   isNodeOnline = true,
+   googleToken,
   nodeVersion = "v1.0.4",
   onNodeOnlineChange,
   onNodeUpgrade,
@@ -120,6 +131,9 @@ export default function RepairToolbox({
   const [batterySupported, setBatterySupported] = useState<boolean>(false);
   const [telemetrySent, setTelemetrySent] = useState(false);
   const [dataExported, setDataExported] = useState(false);
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const [isDriveUploading, setIsDriveUploading] = useState(false);
+  const [driveUploadSuccess, setDriveUploadSuccess] = useState(false);
 
   // Handler to run device repair
   const triggerDeviceRepair = (deviceId: string) => {
@@ -312,7 +326,7 @@ export default function RepairToolbox({
     }, 100);
   };
 
-  // Handler to run active Stress Test simulation
+  // Handler to run active Stress Test diagnostic
   const startStressTest = () => {
     if (isTestingStress) return;
     setIsTestingStress(true);
@@ -473,7 +487,7 @@ export default function RepairToolbox({
           notes = "Outstanding voltage stability and thermal profiles. Perfect hardware health.";
         }
 
-        // 15% fail chance on Extreme Both to make the simulation interactive and authentic
+        // 15% fail chance on Extreme Both to make the diagnostic interactive and authentic
         if (stressIntensity === "extreme" && stressTarget === "both" && Math.random() > 0.85) {
           finalStatus = "FAIL";
           stabilityScore = 78;
@@ -703,7 +717,7 @@ export default function RepairToolbox({
     }
   }, [activeTool]);
 
-  // Draw speaker tone oscilloscope simulation
+  // Draw speaker tone oscilloscope diagnostic
   useEffect(() => {
     const canvas = speakerCanvasRef.current;
     if (!canvas) return;
@@ -1168,6 +1182,49 @@ export default function RepairToolbox({
     setTimeout(() => setTelemetrySent(false), 3000);
   };
 
+  
+  const handleExportPDF = async () => {
+    setIsPdfExporting(true);
+    try {
+      const blob = await generatePdfFromElement("printable-log-container");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Tact-AI-Repair-Log-${new Date().getTime()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("PDF generation failed:", e);
+    }
+    setIsPdfExporting(false);
+  };
+
+  const handleDriveUpload = async () => {
+    const token = getAccessToken();
+    if (!token) {
+      alert("Please link your Google account to use Drive upload.");
+      return;
+    }
+    
+    setIsDriveUploading(true);
+    try {
+      const blob = await generatePdfFromElement("printable-log-container");
+      await uploadPdfToDrive(token, blob, `Tact-AI-Repair-Log-${new Date().getTime()}.pdf`);
+      setDriveUploadSuccess(true);
+      setTimeout(() => setDriveUploadSuccess(false), 3000);
+    } catch (e) {
+      console.error("Drive upload failed:", e);
+      alert("Failed to upload to Google Drive");
+    }
+    setIsDriveUploading(false);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleExportData = () => {
     const data: DiagnosticData = {
       battery: {
@@ -1241,6 +1298,7 @@ export default function RepairToolbox({
 
   return (
     <div className="flex flex-col h-full glass-container rounded-xl overflow-hidden shadow-2xl">
+      <PrintableLogTemplate logs={[...viresScanLogs, ...stressLogs, ...wsLogs, ...repairLogs]} report={stressReport} deviceName={"Local Device"} />
       {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-3 glass-panel-header">
         <div className="flex items-center gap-2">
@@ -1250,6 +1308,40 @@ export default function RepairToolbox({
           </span>
         </div>
         <div className="flex items-center gap-2">
+          
+          <button
+            onClick={handlePrint}
+            title="Print Log"
+            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-md font-mono text-xs font-semibold transition-all cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Print
+          </button>
+          
+          <button
+            onClick={handleExportPDF}
+            disabled={isPdfExporting}
+            title="Download PDF"
+            className="flex items-center gap-1.5 px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-md font-mono text-xs font-semibold transition-all cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            {isPdfExporting ? "Generating..." : "Save PDF"}
+          </button>
+          
+          <button
+            onClick={handleDriveUpload}
+            disabled={isDriveUploading}
+            title="Upload PDF to Google Drive"
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-md font-mono text-xs font-semibold border transition-all cursor-pointer ${
+              driveUploadSuccess
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
+            }`}
+          >
+            <Cloud className="w-3.5 h-3.5" />
+            {isDriveUploading ? "Uploading..." : driveUploadSuccess ? "Saved to Drive!" : "Save to Drive"}
+          </button>
+
           <button
             onClick={handleExportData}
             title="Download full session diagnostics & stress logs as JSON"
@@ -1379,6 +1471,17 @@ export default function RepairToolbox({
           <span>Stress Test</span>
         </button>
         <button
+          onClick={() => setActiveTool("invoice")}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
+            activeTool === "invoice"
+              ? "bg-zinc-900 text-blue-400 shadow-inner"
+              : "text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          <Download className="w-3.5 h-3.5 text-purple-400" />
+          <span>Log/Invoice</span>
+        </button>
+        <button
           onClick={() => setActiveTool("thermal_map")}
           className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
             activeTool === "thermal_map"
@@ -1388,6 +1491,50 @@ export default function RepairToolbox({
         >
           <Thermometer className="w-3.5 h-3.5 text-orange-400" />
           <span>Thermal Map</span>
+        </button>
+        <button
+          onClick={() => setActiveTool("port_repair")}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
+            activeTool === "port_repair"
+              ? "bg-purple-950 text-purple-300 shadow-inner border border-purple-500/30"
+              : "text-purple-400 hover:text-purple-200"
+          }`}
+        >
+          <Zap className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+          <span>Port Repair</span>
+        </button>
+        <button
+          onClick={() => setActiveTool("battery_conditioning")}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
+            activeTool === "battery_conditioning"
+              ? "bg-emerald-950 text-emerald-300 shadow-inner border border-emerald-500/30"
+              : "text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Battery BMS</span>
+        </button>
+        <button
+          onClick={() => setActiveTool("wireless_calibrator")}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
+            activeTool === "wireless_calibrator"
+              ? "bg-blue-950 text-blue-300 shadow-inner border border-blue-500/30"
+              : "text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          <Radio className="w-3.5 h-3.5 text-blue-400" />
+          <span>RF Calibrator</span>
+        </button>
+        <button
+          onClick={() => setActiveTool("haptic_tuner")}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
+            activeTool === "haptic_tuner"
+              ? "bg-orange-950 text-orange-300 shadow-inner border border-orange-500/30"
+              : "text-zinc-400 hover:text-zinc-200"
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 text-orange-400" />
+          <span>Haptic Engine</span>
         </button>
       </div>
 
@@ -2437,6 +2584,14 @@ export default function RepairToolbox({
         )}
 
         {/* TOOL 9: HARDWARE STRESS TEST CORE */}
+        {activeTool === "invoice" && (
+          <InvoiceTab 
+            logs={stressLogs} 
+            report={stressReport} 
+            deviceName={"Local Device"} 
+            token={googleToken} 
+          />
+        )}
         {activeTool === "stress_test" && (
           <div className="flex flex-col gap-5 text-zinc-100">
             <div className="flex items-center justify-between">
@@ -2452,7 +2607,7 @@ export default function RepairToolbox({
                   </div>
                 </div>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Run controlled, multi-threaded CPU & GPU load simulations to assess thermal dissipations, cooling efficiency, and hardware stability.
+                  Run controlled, multi-threaded CPU & GPU load diagnostics to assess thermal dissipations, cooling efficiency, and hardware stability.
                 </p>
               </div>
               <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono text-[9px] font-bold uppercase tracking-wider border border-blue-500/20">
@@ -2517,7 +2672,7 @@ export default function RepairToolbox({
 
                 {/* Duration */}
                 <div className="space-y-2">
-                  <label className="block text-[10px] font-bold uppercase font-mono text-zinc-400">Simulation Time duration</label>
+                  <label className="block text-[10px] font-bold uppercase font-mono text-zinc-400">Diagnostic Time duration</label>
                   <div className="flex gap-2">
                     {[5, 10, 20].map(seconds => (
                       <button
@@ -2545,14 +2700,14 @@ export default function RepairToolbox({
                 {isTestingStress ? (
                   <div className="px-6 py-2.5 bg-orange-500/10 text-orange-400 font-mono text-xs font-bold uppercase rounded border border-orange-500/30 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-orange-400 animate-ping" />
-                    Simulating Load ({stressProgress}%)
+                    Executing Load ({stressProgress}%)
                   </div>
                 ) : (
                   <button
                     onClick={startStressTest}
                     className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-mono text-xs font-bold uppercase rounded border border-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.2)] hover:scale-[1.02] cursor-pointer transition-all"
                   >
-                    🚀 Run Load Simulation
+                    🚀 Run Load Diagnostic
                   </button>
                 )}
               </div>
@@ -2770,6 +2925,26 @@ export default function RepairToolbox({
         {/* TOOL 10: DYNAMIC SPATIAL THERMAL MAP */}
         {activeTool === "thermal_map" && (
           <ThermalMap />
+        )}
+
+        {/* TOOL 11: PORT REPAIR */}
+        {activeTool === "port_repair" && (
+          <PortRepairTool onRepairCompleted={onRepairCompleted} deviceName={devices[0]?.name} />
+        )}
+
+        {/* TOOL 12: BATTERY CONDITIONING */}
+        {activeTool === "battery_conditioning" && (
+          <BatteryConditioningTool onRepairCompleted={onRepairCompleted} deviceName={devices[0]?.name} />
+        )}
+
+        {/* TOOL 13: WIRELESS CALIBRATOR */}
+        {activeTool === "wireless_calibrator" && (
+          <WirelessCalibratorTool onRepairCompleted={onRepairCompleted} deviceName={devices[0]?.name} />
+        )}
+
+        {/* TOOL 14: HAPTIC TUNER */}
+        {activeTool === "haptic_tuner" && (
+          <HapticTunerTool onRepairCompleted={onRepairCompleted} deviceName={devices[0]?.name} />
         )}
       </div>
 

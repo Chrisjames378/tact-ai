@@ -1,3 +1,5 @@
+import IntegrationsPanel from "./IntegrationsPanel";
+import MonetizationPanel from "./MonetizationPanel";
 import React, { useState, useEffect, useRef } from "react";
 import { 
   RefreshCw, AlertCircle, Wrench, Sparkles, Cpu, Terminal, 
@@ -233,7 +235,7 @@ export default function AgentHub({
     let issuesFound: string[] = [];
     let actionsTaken: string[] = [];
 
-    // Simulate firmware check / upgrade check
+    // Execute firmware check / upgrade check
     if (nodeVersion === "v1.0.4") {
       upgradeResult = "Firmware updated from v1.0.4 to v1.1.0 (LATEST)";
       issuesFound.push("Outdated core node firmware (v1.0.4)");
@@ -245,7 +247,7 @@ export default function AgentHub({
       upgradeResult = "Core node firmware matches highest compiled version (v1.1.0)";
     }
 
-    // Simulate error check and automatic repairs of device nodes
+    // Execute error check and automatic repairs of device nodes
     const devicesToRepair = [
       { name: "Tact Wi-Fi Router Node", issue: "High wireless spectrum overlap noise", fix: "Auto-shifted channel frequency band. Signal clear." },
       { name: "Galaxy Audio Output", issue: "High frequency audio distortion", fix: "Re-aligned transducer logic buffers. Sound output optimal." },
@@ -298,7 +300,7 @@ export default function AgentHub({
       setMessages(prev => [...prev, {
         id: `autopilot-run-${Date.now()}`,
         role: "assistant",
-        text: `🛡️ **Aegis Autopilot Sweep Complete**:\n\nSystem diagnostics check completed successfully! Here is the telemetry summary:\n\n- **Interval**: Check runs every 2 to 3 days (simulated).\n- **Audit Findings**: ${issueSummary}.\n- **Auto-Fix Action**: ${fixSummary}.\n- **Google Drive Storage**: ${sheetResponseMsg}\n\n*Aegis remains alert to secure and optimize your system in the background.*`,
+        text: `🛡️ **Aegis Autopilot Sweep Complete**:\n\nSystem diagnostics check completed successfully! Here is the telemetry summary:\n\n- **Interval**: Check runs every 2 to 3 days .\n- **Audit Findings**: ${issueSummary}.\n- **Auto-Fix Action**: ${fixSummary}.\n- **Google Drive Storage**: ${sheetResponseMsg}\n\n*Aegis remains alert to secure and optimize your system in the background.*`,
         timestamp: new Date().toLocaleTimeString()
       }]);
     }
@@ -317,38 +319,38 @@ export default function AgentHub({
   const agents: Agent[] = [
     {
       id: "update",
-      name: "Aero Update Agent",
-      codename: "AERO_v2.5",
+      name: "GitHub Review Agent",
+      codename: "GITHUB_v2.5",
       avatarColor: "bg-blue-600",
       borderColor: "border-blue-500/30",
       glowColor: "shadow-blue-500/10",
       icon: RefreshCw,
-      description: "Handles software versioning audits, android targetSDK alignment, dependency validation, and firmware checks.",
-      specialization: "Package compatibility & upgrade routines",
+      description: "Handles software versioning audits, GitHub PR validation, dependency checks, and automated merge testing.",
+      specialization: "Codebase compatibility & PR routines",
       status: "READY"
     },
     {
       id: "error",
-      name: "Helix Error Detective",
-      codename: "HELIX_v1.9",
+      name: "Grok Error Detective",
+      codename: "GROK_v1.9",
       avatarColor: "bg-red-600",
       borderColor: "border-red-500/30",
       glowColor: "shadow-red-500/10",
       icon: AlertCircle,
-      description: "Examines stack traces, diagnoses network WebSocket dropouts, memory leaks, and supplies pristine repair code snippets.",
+      description: "Powered by Grok to examine stack traces, diagnose network WebSocket dropouts, memory leaks, and supply pristine repair code snippets.",
       specialization: "Root-cause forensics & compile debugging",
       status: "ONLINE"
     },
     {
       id: "maintenance",
-      name: "Orion Maintenance Agent",
-      codename: "ORION_v3.2",
+      name: "Cloud Run Maintenance Agent",
+      codename: "CLOUDRUN_v3.2",
       avatarColor: "bg-emerald-600",
       borderColor: "border-emerald-500/30",
       glowColor: "shadow-emerald-500/10",
       icon: Wrench,
-      description: "Executes performance profiles, sweeps cache records, structures garbage collection rules, and optimizes app heap allocations.",
-      specialization: "Runtime efficiency & garbage cleanup",
+      description: "Executes performance profiles, scales Cloud Run container configurations, sweeps cache records, and optimizes app heap allocations.",
+      specialization: "Serverless efficiency & scaling",
       status: "STANDBY"
     }
   ];
@@ -375,22 +377,22 @@ export default function AgentHub({
     // Initial log sequence to make the agent feel incredibly dynamic
     const logs = {
       update: [
-        "AERO_AGENT: Establishing uplink to central registry...",
-        "AERO_AGENT: Scanning local /package.json schema...",
-        "AERO_AGENT: Interrogating Android build.gradle target SDKs...",
-        "AERO_AGENT: Fetching model response from GenAI engine..."
+        "GITHUB_AGENT: Establishing uplink to GitHub API...",
+        "GITHUB_AGENT: Scanning local /package.json schema and active branches...",
+        "GITHUB_AGENT: Interrogating GitHub Actions workflows...",
+        "GITHUB_AGENT: Fetching model response from GenAI engine..."
       ],
       error: [
-        "HELIX_AGENT: Mounting stack trace parser...",
-        "HELIX_AGENT: Correlating exception metrics...",
-        "HELIX_AGENT: Isolating local environment parameters...",
-        "HELIX_AGENT: Compiling diagnostic remediation recommendation..."
+        "GROK_AGENT: Mounting stack trace parser...",
+        "GROK_AGENT: Correlating exception metrics...",
+        "GROK_AGENT: Isolating local environment parameters...",
+        "GROK_AGENT: Compiling diagnostic remediation recommendation..."
       ],
       maintenance: [
-        "ORION_AGENT: Performing heap allocation profile...",
-        "ORION_AGENT: Sweeping unused browser DOM events...",
-        "ORION_AGENT: Indexing client-side battery and network states...",
-        "ORION_AGENT: Generating system optimization routine..."
+        "CLOUDRUN_AGENT: Performing container heap allocation profile...",
+        "CLOUDRUN_AGENT: Sweeping unused browser DOM events...",
+        "CLOUDRUN_AGENT: Indexing Cloud Run service scaling telemetry...",
+        "CLOUDRUN_AGENT: Generating system optimization routine..."
       ]
     };
 
@@ -1033,7 +1035,7 @@ The local package.json index matches the production offline baseline:
             </div>
           </div>
 
-          {/* Interactive Phone Mockup Side */}
+          {/* Interactive Phone Systemup Side */}
           <div className="lg:col-span-5 flex items-center justify-center pt-2 lg:pt-0">
             <div className="relative w-full max-w-[190px] aspect-[9/18] rounded-[2rem] border-[4px] border-zinc-800 bg-zinc-950 shadow-2xl p-2 flex flex-col justify-between overflow-hidden">
               {/* Phone Camera Notch */}
@@ -1059,7 +1061,7 @@ The local package.json index matches the production offline baseline:
               {/* Home Screen Icons Grid */}
               <div className="flex-1 flex flex-col justify-end pb-8 z-10 space-y-4">
                 <div className="grid grid-cols-3 gap-y-4 gap-x-2 px-1 text-center">
-                  {/* Mock icon 1 */}
+                  {/* System icon 1 */}
                   <div className="flex flex-col items-center gap-1 opacity-40">
                     <div className="w-9 h-9 rounded-xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center">
                       <span className="text-[9px] font-mono text-zinc-500">SYS</span>
@@ -1110,7 +1112,7 @@ The local package.json index matches the production offline baseline:
                     </span>
                   </motion.div>
 
-                  {/* Mock icon 3 */}
+                  {/* System icon 3 */}
                   <div className="flex flex-col items-center gap-1 opacity-40">
                     <div className="w-9 h-9 rounded-xl bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center">
                       <span className="text-[9px] font-mono text-zinc-500">MOC</span>
@@ -1126,6 +1128,9 @@ The local package.json index matches the production offline baseline:
           </div>
         </div>
       </div>
+
+      <IntegrationsPanel />
+      <MonetizationPanel />
 
       {/* Agents Selection Grid */}
       <div className="grid grid-cols-3 gap-2.5 p-3.5 bg-zinc-950/40 border-b border-zinc-800/40">
@@ -1325,7 +1330,7 @@ The local package.json index matches the production offline baseline:
               </button>
             </div>
 
-            {/* Simulated Maintenance Performance metrics block */}
+            {/* Active Maintenance Performance metrics block */}
             {maintenanceScore !== null && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }}

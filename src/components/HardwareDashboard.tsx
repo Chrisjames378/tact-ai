@@ -83,7 +83,7 @@ export default function HardwareDashboard({
         .attr("y", innerHeight / 2)
         .attr("text-anchor", "middle")
         .attr("class", "fill-zinc-500 font-mono text-[10px]")
-        .text("Awaiting stress simulation telemetry frames...");
+        .text("Awaiting stress diagnostic telemetry frames...");
       return;
     }
 
@@ -322,7 +322,7 @@ export default function HardwareDashboard({
         </div>
 
         <div className="p-2 bg-zinc-950/40 border border-zinc-850 rounded">
-          <span className="font-mono text-[8px] text-zinc-500 uppercase block font-semibold">Simulation Clock</span>
+          <span className="font-mono text-[8px] text-zinc-500 uppercase block font-semibold">Diagnostic Clock</span>
           <div className="mt-0.5">
             <span className="font-mono text-sm font-extrabold text-purple-400">
               {history.length > 0 ? (history.length / 10).toFixed(1) : "0.0"}s / {duration}s

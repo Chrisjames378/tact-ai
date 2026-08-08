@@ -32,3 +32,18 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-log-container, #printable-log-container * {
+    visibility: visible;
+  }
+  #printable-log-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
