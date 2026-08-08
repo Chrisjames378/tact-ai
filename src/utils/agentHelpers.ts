@@ -131,6 +131,17 @@ export function generateLocalDiagnosticResponse(
     ];
     tools = ["Wi-Fi Spectrometer Tool", "Ethernet Cable Tester", "Hardware Router Terminal Console"];
   }
+  // Match: Software Suites / Boot Loop / ReiBoot / Dr.Fone / Smart Switch / Firmware
+  else if (query.includes("reiboot") || query.includes("fixppo") || query.includes("dr.fone") || query.includes("drfone") || query.includes("smart switch") || query.includes("itunes") || query.includes("boot loop") || query.includes("recovery") || query.includes("suite") || query.includes("flash") || query.includes("firmware")) {
+    assessment = `🛠️ **[ON-DEVICE COPROCESSOR ASSESSMENT]**: Software Suite & Companion Repair Diagnostic triggered. Boot loop freezes, stuck Apple logos, black screen errors, and stock firmware flashing require recommended desktop repair suites.`;
+    steps = [
+      "**Tenorshare ReiBoot / iMyFone Fixppo**: Best for iOS & iPadOS. Fixes 150+ Apple logo freezes, boot loops, or black screens without data loss, and lets you enter/exit recovery mode with one click. (A separate companion tool, ReiBoot for Android, handles select Android/Samsung boot modes).",
+      "**Wondershare Dr.Fone**: Best cross-platform mobile suite. Offers modular system repair, data recovery, and phone transfer tools for both iOS and major Android brands like Samsung, Google, and LG.",
+      "**Samsung Smart Switch / Apple Finder / iTunes**: Official manufacturer software. The safest, free native option to flash official stock firmware, restore backups, and update software on Galaxy or Apple devices via Windows and Mac.",
+      "Launch the **Software Suites** tab inside the Repair Toolbox to execute live diagnostic simulations for each package."
+    ];
+    tools = ["Tenorshare ReiBoot / iMyFone Fixppo", "Wondershare Dr.Fone", "Samsung Smart Switch / Apple Finder / iTunes"];
+  }
   // Match: Scraper / Samsung / Google Sheets
   else if (query.includes("scraper") || query.includes("samsung") || query.includes("sheet") || query.includes("drive")) {
     assessment = `🔒 **[ON-DEVICE COPROCESSOR ASSESSMENT]**: Local Privacy Mode has disabled external scraping and Google sheets connectivity. This keeps your local data fully insulated.`;

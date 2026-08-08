@@ -51,4 +51,5 @@ export type ToolType =
   | "port_repair"
   | "battery_conditioning"
   | "wireless_calibrator"
-  | "haptic_tuner";
+  | "haptic_tuner"
+  | "software_suites";

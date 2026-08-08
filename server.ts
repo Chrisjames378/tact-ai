@@ -13,6 +13,23 @@ app.use(express.json());
 
 const PORT = 3000;
 
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    deviceTarget: "Samsung Galaxy A06",
+    timestamp: Date.now(),
+    node: "SAMSUNG_A06_NODE_01",
+    services: {
+      chat: "active",
+      sheetsLog: "active",
+      scraper: "active",
+      agents: "active",
+      websocket: "active"
+    }
+  });
+});
+
 // Lazy initialize Gemini client to avoid crashes if API key is not yet set
 let ai: GoogleGenAI | null = null;
 function getGeminiClient() {
@@ -355,7 +372,8 @@ const wss = new WebSocketServer({ noServer: true });
 
 server.on("upgrade", (request, socket, head) => {
   try {
-    const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+    const host = request.headers.host || "localhost";
+    const url = new URL(request.url || "/", `http://${host}`);
     if (url.pathname === "/ws" || url.pathname === "/ws/") {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
@@ -363,7 +381,7 @@ server.on("upgrade", (request, socket, head) => {
     } else {
       socket.destroy();
     }
-  } catch (err) {
+  } catch (e) {
     socket.destroy();
   }
 });

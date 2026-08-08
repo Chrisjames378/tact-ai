@@ -17,6 +17,8 @@ import PortRepairTool from "./PortRepairTool";
 import BatteryConditioningTool from "./BatteryConditioningTool";
 import WirelessCalibratorTool from "./WirelessCalibratorTool";
 import HapticTunerTool from "./HapticTunerTool";
+import SoftwareSuitesTool from "./SoftwareSuitesTool";
+import { Laptop } from "lucide-react";
 
 interface RepairToolboxProps {
   onSendDiagnostics: (data: DiagnosticData) => void;
@@ -1536,6 +1538,17 @@ export default function RepairToolbox({
           <Activity className="w-3.5 h-3.5 text-orange-400" />
           <span>Haptic Engine</span>
         </button>
+        <button
+          onClick={() => setActiveTool("software_suites")}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
+            activeTool === "software_suites"
+              ? "bg-cyan-950 text-cyan-300 shadow-inner border border-cyan-500/30"
+              : "text-cyan-400 hover:text-cyan-200"
+          }`}
+        >
+          <Laptop className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Software Suites</span>
+        </button>
       </div>
 
       {/* Main Workbench Viewport */}
@@ -2945,6 +2958,11 @@ export default function RepairToolbox({
         {/* TOOL 14: HAPTIC TUNER */}
         {activeTool === "haptic_tuner" && (
           <HapticTunerTool onRepairCompleted={onRepairCompleted} deviceName={devices[0]?.name} />
+        )}
+
+        {/* TOOL 15: SOFTWARE REPAIR SUITES */}
+        {activeTool === "software_suites" && (
+          <SoftwareSuitesTool onRepairCompleted={onRepairCompleted} />
         )}
       </div>
 
