@@ -91,6 +91,21 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // WebUSB OTG Cable/Device Connection Listener
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && "usb" in navigator) {
+      const handleConnect = (event: any) => {
+        console.log('OTG Device Connected:', event.device?.productName || "Unknown OTG Device");
+      };
+
+      (navigator as any).usb.addEventListener('connect', handleConnect);
+
+      return () => {
+        (navigator as any).usb.removeEventListener('connect', handleConnect);
+      };
+    }
+  }, []);
+
   // Audio / Speech States
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);

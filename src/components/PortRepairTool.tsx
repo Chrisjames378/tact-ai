@@ -16,12 +16,46 @@ export default function PortRepairTool({ onRepairCompleted, deviceName = "Primar
   const [isPdResetting, setIsPdResetting] = useState(false);
   const [pdStatus, setPdStatus] = useState<"NORMAL" | "LOCKOUT" | "RECALIBRATED">("LOCKOUT");
   const [oxidationLevel, setOxidationLevel] = useState<number>(28); // %
+  const [connectedOtgDevice, setConnectedOtgDevice] = useState<string | null>(null);
   const [repairLogs, setRepairLogs] = useState<string[]>([
     "[PORT DIAGNOSTIC] Initiating USB Power Delivery CC1/CC2 line scan...",
     "[PORT DIAGNOSTIC] Detected elevated CC line impedance: 14.2Ω (Threshold: <5.0Ω)",
     "[MOISTURE SENSOR] Warning: Micro-condensation flag raised on VBUS pins (34% relative humidity)",
     "[USB-PD CONTROLLER] Power handshake limited to 5V/0.5A safety trickle due to moisture lockout."
   ]);
+
+  // WebUSB OTG Cable/Device Connection Listener
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && "usb" in navigator) {
+      const handleConnect = (event: any) => {
+        const prodName = event.device?.productName || "USB OTG Dongle / Storage";
+        console.log('OTG Device Connected:', prodName);
+        setConnectedOtgDevice(prodName);
+        setRepairLogs(prev => [
+          ...prev,
+          `[USB OTG CONNECT] OTG Device Connected: ${prodName}`
+        ]);
+      };
+
+      const handleDisconnect = (event: any) => {
+        const prodName = event.device?.productName || "USB OTG Dongle";
+        console.log('OTG Device Disconnected:', prodName);
+        setConnectedOtgDevice(null);
+        setRepairLogs(prev => [
+          ...prev,
+          `[USB OTG DISCONNECT] OTG Device Disconnected: ${prodName}`
+        ]);
+      };
+
+      (navigator as any).usb.addEventListener('connect', handleConnect);
+      (navigator as any).usb.addEventListener('disconnect', handleDisconnect);
+
+      return () => {
+        (navigator as any).usb.removeEventListener('connect', handleConnect);
+        (navigator as any).usb.removeEventListener('disconnect', handleDisconnect);
+      };
+    }
+  }, []);
 
   // Audio refs for ultrasonic acoustic pulse
   const audioCtxRef = useRef<AudioContext | null>(null);
