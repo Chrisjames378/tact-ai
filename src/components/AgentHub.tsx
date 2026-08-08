@@ -65,7 +65,7 @@ export default function AgentHub({
   const [copied, setCopied] = useState(false);
   const [agentLog, setAgentLog] = useState<string[]>([]);
 
-  // Moto G15 App Cover & PWA install state
+  // Samsung A06 App Cover & PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [coverGlowColor, setCoverGlowColor] = useState<"cyan" | "emerald" | "amber" | "purple">("cyan");
@@ -99,12 +99,12 @@ export default function AgentHub({
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // Direct instructions for Moto G15 Android if standard prompt is unavailable
+      // Direct instructions for Samsung A06 Android if standard prompt is unavailable
       if (setMessages) {
         setMessages(prev => [...prev, {
           id: `pwa-install-manual-${Date.now()}`,
           role: "assistant",
-          text: `📲 **Install Tact AI on your Moto G15 (Android)**:\n\n1. Open this app in **Chrome** on your phone.\n2. Tap the **three dots menu (⋮)** in the top right of Chrome.\n3. Tap **"Add to Home screen"** or **"Install app"**.\n4. Your custom **Tact AI App Cover** will be added to your home screen! Once added, it will load instantly and run offline **every single time, without a doubt!**`,
+          text: `📲 **Install Tact AI on your Samsung Galaxy A06 (Android)**:\n\n1. Open this app in **Chrome or Samsung Internet** on your phone.\n2. Tap the **three dots menu (⋮)** or menu bar in your browser.\n3. Tap **"Add to Home screen"** or **"Install app"**.\n4. Your custom **Tact AI App Cover** will be added to your home screen! Once added, it will load instantly and run offline **every single time, without a doubt!**`,
           timestamp: new Date().toLocaleTimeString()
         }]);
       }
@@ -251,7 +251,7 @@ export default function AgentHub({
     const devicesToRepair = [
       { name: "Tact Wi-Fi Router Node", issue: "High wireless spectrum overlap noise", fix: "Auto-shifted channel frequency band. Signal clear." },
       { name: "Galaxy Audio Output", issue: "High frequency audio distortion", fix: "Re-aligned transducer logic buffers. Sound output optimal." },
-      { name: "Moto G15 Telemetry Hub", issue: "Wake-word frequency drift in battery saver", fix: "Adjusted wake frequency coefficients for optimal power" }
+      { name: "Samsung Galaxy A06 Telemetry Hub", issue: "Wake-word frequency drift in battery saver", fix: "Adjusted wake frequency coefficients for optimal power" }
     ];
 
     const randomRep = devicesToRepair[Math.floor(Math.random() * devicesToRepair.length)];
@@ -424,7 +424,7 @@ The local package.json index matches the production offline baseline:
           const target = payload.target || "Android Target SDK 34 Alignment";
           localReportText = `### ⚙️ Tact On-Device Alignment Report: ${target}
 
-- **Baseline Check**: Local Moto G15 host runs Android SDK API level 34 compatibilities directly.
+- **Baseline Check**: Local Samsung Galaxy A06 host runs Android SDK API level 34 compatibilities directly.
 - **Config Manifest**: Local config file parsed with zero cloud queries.
 - **Offline Resolution**: Confirmed that all client components, service worker caches, and assets are perfectly bundled to align with on-device target rules.`;
         }
@@ -925,13 +925,13 @@ The local package.json index matches the production offline baseline:
         </div>
       </div>
 
-      {/* Moto G15 Mobile Installer & App Cover Customizer Panel */}
+      {/* Samsung Galaxy A06 Mobile Installer & App Cover Customizer Panel */}
       <div className="p-3.5 bg-zinc-900/40 border-b border-zinc-800/80 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Smartphone className="w-3.5 h-3.5 text-purple-400" />
             <span className="font-mono text-[10px] font-black uppercase text-zinc-300 tracking-wider">
-              Moto G15 Mobile Installer & App Cover Customizer
+              Samsung Galaxy A06 Mobile Installer & App Cover Customizer
             </span>
           </div>
           <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-mono text-[8px] font-bold uppercase">
@@ -944,7 +944,7 @@ The local package.json index matches the production offline baseline:
           <div className="lg:col-span-7 space-y-3 flex flex-col justify-between">
             <div className="space-y-2.5">
               <p className="text-[11px] text-zinc-400 font-mono leading-relaxed">
-                Configure your custom <span className="text-purple-400 font-bold">App Cover Icon</span> and install Tact AI directly on your Motorola Moto G15 or other Android devices. Once installed, our advanced Service Worker caching guarantees the app opens instantly and runs offline **every single time, without a doubt!**
+                Configure your custom <span className="text-purple-400 font-bold">App Cover Icon</span> and install Tact AI directly on your Samsung Galaxy A06 or other Android devices. Once installed, our advanced Service Worker caching guarantees the app opens instantly and runs offline **every single time, without a doubt!**
               </p>
 
               {/* Customizer controls */}
@@ -1030,7 +1030,7 @@ The local package.json index matches the production offline baseline:
                 className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-900/20 hover:shadow-purple-900/40 border border-purple-500/30 flex items-center justify-center gap-2 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] min-h-[44px]"
               >
                 <Download className="w-4 h-4 animate-bounce" />
-                {isInstalled ? "Tact AI is Installed ✓" : "Install PWA on Moto G15"}
+                {isInstalled ? "Tact AI is Installed ✓" : "Install PWA on Samsung A06"}
               </button>
             </div>
           </div>
@@ -1122,7 +1122,7 @@ The local package.json index matches the production offline baseline:
                 </div>
               </div>
 
-              {/* Moto Phone Soft Navigation Key */}
+              {/* Samsung Phone Soft Navigation Pill */}
               <div className="w-12 h-[3px] bg-zinc-700 rounded-full mx-auto mb-1 z-20 shrink-0" />
             </div>
           </div>

@@ -280,7 +280,7 @@ export default function RepairToolbox({
     const logsTimeline = [
       { progress: 15, log: `[VIRES CORE] Checking host browser environment integrity... Secure.` },
       { progress: 30, log: `[VIRES CORE] Inspecting Tact AI active web sockets and session state... Protected.` },
-      { progress: 45, log: `[VIRES CORE] Scanning Moto G15 virtual bridge variables... No vulnerabilities.` },
+      { progress: 45, log: `[VIRES CORE] Scanning Samsung Galaxy A06 virtual bridge variables... No vulnerabilities.` },
       { progress: 60, log: `[VIRES CORE] Auditing Evomi proxy endpoints for SSL/TLS validation... 100% Verified.` },
       { progress: 75, log: `[VIRES CORE] Running malware signature scan across in-memory buffers... 0 threats detected.` },
       { progress: 90, log: `[VIRES CORE] Sweeping repair registers and firmware update cache... Pristine status.` },
@@ -2473,7 +2473,7 @@ export default function RepairToolbox({
                   <span className="font-mono text-sm font-bold text-zinc-200 uppercase">DB Version 2026.07.10</span>
                 </div>
                 <p className="text-[11px] text-zinc-400 leading-relaxed mt-1">
-                  Local core signature index is up to date, encompassing all major rootkits, firmware hijack packages, and Trojan overflows targeting Motorola & IPS panels.
+                  Local core signature index is up to date, encompassing all major rootkits, firmware hijack packages, and Trojan overflows targeting Samsung & PLS LCD panels.
                 </p>
               </div>
             </div>
@@ -2561,7 +2561,7 @@ export default function RepairToolbox({
                   { name: "Tact Wi-Fi Router Node", details: "Secure routing active • WPA3 Encryption • DNS Filtering" },
                   { name: "Audio Soundcard Input", details: "Local voice buffer isolation • Anti-acoustic hijacking enabled" },
                   { name: "Samsung Smart Screen Frame", details: "Local pixel buffer virtualization • Screen-burn guard active" },
-                  { name: "Moto G15 Client Device", details: "Shielded kernel connection • Full sandbox insulation" }
+                  { name: "Samsung Galaxy A06 Client Device", details: "Shielded kernel connection • Full sandbox insulation" }
                 ].map((device, idx) => (
                   <div key={idx} className="p-3 bg-zinc-900/30 border border-zinc-800 rounded-lg flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">

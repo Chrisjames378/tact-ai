@@ -5,7 +5,8 @@ if (typeof window !== 'undefined') {
       msg.includes('WebSocket') || 
       msg.includes('websocket') || 
       msg.includes('connection') ||
-      msg.includes('closed without opened')
+      msg.includes('closed without opened') ||
+      msg.includes('Vite HMR')
     );
   };
 
@@ -39,7 +40,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
-// Register Service Worker for PWA installability on mobile devices (e.g., Moto G15)
+// Register Service Worker for PWA installability on mobile devices (e.g., Samsung Galaxy A06)
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js")

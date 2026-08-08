@@ -351,10 +351,25 @@ ${JSON.stringify(payload || {}, null, 2)}`;
 
 // Vite middleware or Static files
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ noServer: true });
+
+server.on("upgrade", (request, socket, head) => {
+  try {
+    const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+    if (url.pathname === "/ws" || url.pathname === "/ws/") {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    } else {
+      socket.destroy();
+    }
+  } catch (err) {
+    socket.destroy();
+  }
+});
 
 wss.on("connection", (ws) => {
-  console.log("[WebSocket] Client connected");
+  console.log("[WebSocket] Client connected on /ws");
 
   ws.on("message", (message) => {
     try {
@@ -372,7 +387,7 @@ wss.on("connection", (ws) => {
           type: "telemetry_ack",
           success: true,
           timestamp: Date.now(),
-          node: "OSTRICH_PROTOTYPE_01",
+          node: "SAMSUNG_A06_NODE_01",
           msg: "Node telemetry integrated successfully into core memory queues."
         }));
       } else {
@@ -398,7 +413,10 @@ wss.on("connection", (ws) => {
 async function setupVite() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { 
+        middlewareMode: true,
+        hmr: false
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

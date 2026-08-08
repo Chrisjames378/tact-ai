@@ -94,9 +94,9 @@ export function generateLocalDiagnosticResponse(
     ];
     tools = ["Multimeter (test charger current drawing)", "USB Power Meter (measure exact voltage & milliamp delivery)", "Thermal Camera (detect hot spots/shorts in the battery IC area)"];
   }
-  // Match: Screen / Pixel / Display / Moto G15 installer
-  else if (query.includes("pixel") || query.includes("screen") || query.includes("display") || query.includes("moto") || query.includes("g15")) {
-    assessment = `📱 **[ON-DEVICE COPROCESSOR ASSESSMENT]**: Screen calibration / Dead Pixel analysis requested for device screen/panel. Motorola and IPS LCD screens are susceptible to sub-pixel fatigue, stuck liquid crystals, or minor backlight leakage.`;
+  // Match: Screen / Pixel / Display / Samsung A06 installer
+  else if (query.includes("pixel") || query.includes("screen") || query.includes("display") || query.includes("samsung") || query.includes("a06")) {
+    assessment = `📱 **[ON-DEVICE COPROCESSOR ASSESSMENT]**: Screen calibration / Dead Pixel analysis requested for device screen/panel. Samsung Galaxy A06 PLS LCD panels are susceptible to sub-pixel fatigue, stuck liquid crystals, or minor backlight leakage.`;
     steps = [
       "Open a high-contrast full-screen dead pixel diagnostic page (flashing solid Red, Green, Blue, White, Black).",
       "Gently apply localized pressure to the stuck pixel area using a soft microfiber cloth or rubber stylus.",
