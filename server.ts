@@ -34,9 +34,9 @@ app.get("/api/health", (req, res) => {
 let ai: GoogleGenAI | null = null;
 function getGeminiClient() {
   if (!ai) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is required");
+      throw new Error("GEMINI_API_KEY or AI_GATEWAY_API_KEY environment variable is required");
     }
     ai = new GoogleGenAI({
       apiKey,
@@ -374,7 +374,8 @@ server.on("upgrade", (request, socket, head) => {
   try {
     const host = request.headers.host || "localhost";
     const url = new URL(request.url || "/", `http://${host}`);
-    if (url.pathname === "/ws" || url.pathname === "/ws/") {
+    const validPaths = ["/ws", "/ws/", "/v1/responses", "/v1/responses/", "/api/ws"];
+    if (validPaths.includes(url.pathname)) {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
       });
@@ -386,19 +387,214 @@ server.on("upgrade", (request, socket, head) => {
   }
 });
 
-wss.on("connection", (ws) => {
-  console.log("[WebSocket] Client connected on /ws");
+// Helper for streaming Gemini response over WebSocket with fallback models
+async function streamGeminiWebSocketResponse(ws: any, model: string, contents: any[], responseId: string) {
+  const client = getGeminiClient();
+  const modelsToTry = [
+    model,
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+  ];
 
-  ws.on("message", (message) => {
+  let fullText = "";
+  let success = false;
+  let lastError: any = null;
+
+  for (const targetModel of modelsToTry) {
+    try {
+      console.log(`[WebSocket Stream] Attempting model ${targetModel} for ${responseId}...`);
+      const stream = await client.models.generateContentStream({
+        model: targetModel,
+        contents,
+        config: {
+          systemInstruction: "You are Tact AI running in high-speed, low-latency WebSocket mode for diagnostic, coding, and real-time response generation.",
+          temperature: 0.7,
+        },
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.text) {
+          fullText += chunk.text;
+          if (ws.readyState === 1) { // 1 = OPEN
+            ws.send(JSON.stringify({
+              type: "response.text.delta",
+              response_id: responseId,
+              delta: chunk.text
+            }));
+          }
+        }
+      }
+
+      success = true;
+      break;
+    } catch (err: any) {
+      console.warn(`[WebSocket Stream] Model ${targetModel} failed:`, err.message || err);
+      lastError = err;
+      fullText = ""; // reset on failure before next model try
+    }
+  }
+
+  if (!success) {
+    throw lastError || new Error("All fallback models failed streaming over WebSocket.");
+  }
+
+  return fullText;
+}
+
+wss.on("connection", (ws) => {
+  console.log("[WebSocket] Client connected for low-latency WebSocket Mode.");
+
+  // Connection-local in-memory cache for Zero Data Retention (ZDR) store=false session chaining
+  const connectionCache = new Map<string, any[]>();
+  let latestResponseId: string | null = null;
+
+  ws.on("message", async (message) => {
     try {
       const parsed = JSON.parse(message.toString());
-      console.log("[WebSocket] Message received:", parsed);
+      console.log("[WebSocket] Frame received:", parsed.type || "unknown");
 
-      if (parsed.type === "ping") {
+      if (parsed.type === "response.create") {
+        const {
+          model = "gemini-3.5-flash",
+          store = false,
+          previous_response_id,
+          input = [],
+          generate = true
+        } = parsed;
+
+        let workingContext: any[] = [];
+
+        // 1. Resolve Chained Context
+        if (previous_response_id) {
+          if (!connectionCache.has(previous_response_id)) {
+            if (!store) {
+              ws.send(JSON.stringify({
+                type: "error",
+                status: 400,
+                error: {
+                  code: "previous_response_not_found",
+                  message: `Previous response with id '${previous_response_id}' not found.`,
+                  param: "previous_response_id"
+                }
+              }));
+              return;
+            }
+          } else {
+            workingContext = [...(connectionCache.get(previous_response_id) || [])];
+          }
+        }
+
+        // Append new input items to the context
+        if (Array.isArray(input)) {
+          workingContext.push(...input);
+        }
+
+        const newResponseId = `resp_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
+
+        // 2. Warmup Turn (generate: false)
+        if (generate === false) {
+          connectionCache.set(newResponseId, workingContext);
+          latestResponseId = newResponseId;
+
+          ws.send(JSON.stringify({
+            type: "response.created",
+            response: {
+              id: newResponseId,
+              model,
+              created_at: Math.floor(Date.now() / 1000),
+              status: "completed",
+              output: []
+            }
+          }));
+          return;
+        }
+
+        // 3. Generation Turn (generate: true)
+        ws.send(JSON.stringify({
+          type: "response.created",
+          response: {
+            id: newResponseId,
+            model,
+            created_at: Math.floor(Date.now() / 1000),
+            status: "in_progress",
+            output: []
+          }
+        }));
+
+        // Convert structured input array to Gemini contents format
+        const geminiContents: any[] = [];
+        for (const item of workingContext) {
+          if (item.type === "message" || item.role) {
+            let role = item.role === "assistant" ? "model" : "user";
+            let text = "";
+            if (typeof item.content === "string") {
+              text = item.content;
+            } else if (Array.isArray(item.content)) {
+              text = item.content.map((c: any) => c.text || c.input_text || c.output_text || "").join("\n");
+            } else if (item.parts) {
+              text = item.parts.map((p: any) => p.text || "").join("\n");
+            }
+            if (text) {
+              geminiContents.push({ role, parts: [{ text }] });
+            }
+          } else if (item.type === "function_call_output") {
+            geminiContents.push({
+              role: "user",
+              parts: [{ text: `[TOOL OUTPUT call_id=${item.call_id}]: ${item.output}` }]
+            });
+          }
+        }
+
+        if (geminiContents.length === 0) {
+          geminiContents.push({ role: "user", parts: [{ text: "Hello" }] });
+        }
+
+        try {
+          const fullText = await streamGeminiWebSocketResponse(ws, model, geminiContents, newResponseId);
+
+          const assistantOutput = {
+            type: "message",
+            role: "assistant",
+            content: [{ type: "output_text", text: fullText }]
+          };
+
+          const finalContext = [...workingContext, assistantOutput];
+          connectionCache.set(newResponseId, finalContext);
+          latestResponseId = newResponseId;
+
+          ws.send(JSON.stringify({
+            type: "response.completed",
+            response: {
+              id: newResponseId,
+              model,
+              created_at: Math.floor(Date.now() / 1000),
+              status: "completed",
+              output: [assistantOutput]
+            }
+          }));
+        } catch (err: any) {
+          // Evict failed previous_response_id from memory cache as required by spec
+          if (previous_response_id) {
+            connectionCache.delete(previous_response_id);
+          }
+
+          ws.send(JSON.stringify({
+            type: "error",
+            status: 500,
+            error: {
+              code: "response_generation_failed",
+              message: err.message || "WebSocket response generation failed."
+            }
+          }));
+        }
+      } else if (parsed.type === "ping") {
         ws.send(JSON.stringify({
           type: "pong",
           timestamp: Date.now(),
-          sender: "TACT_SERVER"
+          sender: "TACT_SERVER",
+          latest_response_id: latestResponseId
         }));
       } else if (parsed.type === "telemetry_transmit") {
         ws.send(JSON.stringify({

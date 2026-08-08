@@ -3,7 +3,7 @@ import {
   Mic, MicOff, MessageSquare, Send, Volume2, VolumeX, RefreshCw, 
   Settings, Battery, Wifi, Cpu, Layers, HelpCircle, Terminal, 
   Wrench, Activity, Sparkles, Plus, AlertCircle, Play, Square,
-  ExternalLink, Info, Globe, Smartphone
+  ExternalLink, Info, Globe, Smartphone, Radio
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import RepairToolbox from "./components/RepairToolbox";
@@ -11,6 +11,7 @@ import AgentHub from "./components/AgentHub";
 import WebScraper from "./components/WebScraper";
 import SamsungMembers from "./components/SamsungMembers";
 import WifiAnalyzer from "./components/WifiAnalyzer";
+import WebSocketStudio from "./components/WebSocketStudio";
 import SystemMonitor from "./components/SystemMonitor";
 import AiXAds from "./components/AiXAds";
 import { Message, DiagnosticData } from "./types";
@@ -19,8 +20,8 @@ import { logRepairToGoogleSheets } from "./utils/sheetsLogger";
 import { generateLocalDiagnosticResponse } from "./utils/agentHelpers";
 
 export default function App() {
-  // Right-hand Panel Selection Tab (Toggle between Workbench, AI Agents Hub, Web Scraper, Samsung Members, and Wi-Fi Analyzer)
-  const [rightPanelTab, setRightPanelTab] = useState<"workbench" | "agents" | "scraper" | "samsung" | "wifi">("agents");
+  // Right-hand Panel Selection Tab (Toggle between Workbench, AI Agents Hub, Web Scraper, Samsung Members, Wi-Fi Analyzer, and WebSocket Studio)
+  const [rightPanelTab, setRightPanelTab] = useState<"workbench" | "agents" | "scraper" | "samsung" | "wifi" | "websocket">("agents");
 
   // Node Online Status and Node Version Upgrades
   const [isNodeOnline, setIsNodeOnline] = useState<boolean>(true);
@@ -1042,6 +1043,17 @@ export default function App() {
               <Wifi className="w-3.5 h-3.5" />
               Wi-Fi
             </button>
+            <button
+              onClick={() => setRightPanelTab("websocket")}
+              className={`flex-1 flex items-center justify-center gap-1 py-2 px-1 rounded-md font-mono text-[9px] font-bold uppercase transition-all cursor-pointer ${
+                rightPanelTab === "websocket"
+                  ? "bg-blue-600/10 text-blue-400 border border-blue-500/25 shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-300 border border-transparent"
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              WebSocket
+            </button>
           </div>
 
           <div className="flex-1 flex flex-col min-h-0">
@@ -1215,12 +1227,14 @@ export default function App() {
                   handleSend(scrapedContent);
                 }}
               />
-            ) : (
+            ) : rightPanelTab === "wifi" ? (
               <WifiAnalyzer 
                 onTransmitToAI={(scrapedContent) => {
                   handleSend(scrapedContent);
                 }}
               />
+            ) : (
+              <WebSocketStudio />
             )}
           </div>
         </div>
