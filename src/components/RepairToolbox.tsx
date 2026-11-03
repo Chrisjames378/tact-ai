@@ -4,7 +4,8 @@ import {
   Activity, Volume2, Monitor, Wifi, ShieldAlert, Cpu, Battery, 
   BatteryCharging, Send, HelpCircle, ShieldCheck, Layers, Zap, 
   Play, ArrowRight, Clock, Sparkles, AlertCircle, Check, Settings, Shield,
-  Flame, Gauge, Download, Thermometer, Printer, FileText, Cloud, Radio, Droplets
+  Flame, Gauge, Download, Thermometer, Printer, FileText, Cloud, Radio, Droplets,
+  Usb, X
 } from "lucide-react";
 import { DiagnosticData, ToolType } from "../types";
 import { PrintableLogTemplate } from "./PrintableLogTemplate";
@@ -18,6 +19,8 @@ import BatteryConditioningTool from "./BatteryConditioningTool";
 import WirelessCalibratorTool from "./WirelessCalibratorTool";
 import HapticTunerTool from "./HapticTunerTool";
 import SoftwareSuitesTool from "./SoftwareSuitesTool";
+import MotherboardDiagnosticTool from "./MotherboardDiagnosticTool";
+import { performUsbCOtgDiagnostic, OtgDiagnosticResult } from "../utils/usbOtgCheck";
 import { Laptop } from "lucide-react";
 
 interface RepairToolboxProps {
@@ -45,6 +48,7 @@ export default function RepairToolbox({
 
   // States for Live Remote Device Repair Command Center
   const [devices, setDevices] = useState([
+    { id: "motherboard", name: "System Logic Motherboard (SoC & PMIC)", status: "Critical Anomaly", health: 38, icon: Cpu, issue: "VRM voltage ripple, PMIC thermal throttling & I2C bus lockup detected" },
     { id: "router", name: "Tact Wi-Fi Router Node", status: "Degraded", health: 42, icon: Wifi, issue: "Spectrum channel overlap on 2.4GHz band" },
     { id: "mic", name: "Audio Soundcard Input", status: "Uncalibrated", health: 65, icon: Activity, issue: "Frequency drift causing wake-word lag" },
     { id: "screen", name: "Samsung Smart Screen Frame", status: "Intermittent", health: 58, icon: Monitor, issue: "Stuck red/blue subpixels detected" },
@@ -53,6 +57,22 @@ export default function RepairToolbox({
   const [repairingDeviceId, setRepairingDeviceId] = useState<string | null>(null);
   const [repairProgress, setRepairProgress] = useState(0);
   const [repairLogs, setRepairLogs] = useState<string[]>([]);
+
+  // States for USB-C OTG Quick Check
+  const [isOtgChecking, setIsOtgChecking] = useState<boolean>(false);
+  const [otgModalResult, setOtgModalResult] = useState<OtgDiagnosticResult | null>(null);
+
+  const handleQuickCheckUsbCOtg = async () => {
+    setIsOtgChecking(true);
+    try {
+      const result = await performUsbCOtgDiagnostic();
+      setOtgModalResult(result);
+    } catch (err) {
+      console.error("OTG diagnostic error:", err);
+    } finally {
+      setIsOtgChecking(false);
+    }
+  };
 
   // States for master upgrade sequence
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -1299,8 +1319,137 @@ export default function RepairToolbox({
   };
 
   return (
-    <div className="flex flex-col h-full glass-container rounded-xl overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-full glass-container rounded-xl overflow-hidden shadow-2xl relative">
       <PrintableLogTemplate logs={[...viresScanLogs, ...stressLogs, ...wsLogs, ...repairLogs]} report={stressReport} deviceName={"Local Device"} />
+
+      {/* USB-C OTG Quick Diagnostic Notification Modal */}
+      {otgModalResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-zinc-900 border border-zinc-700/90 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden animate-scale-up">
+            {/* Modal Header */}
+            <div className={`px-5 py-4 flex items-center justify-between border-b ${
+              otgModalResult.supported 
+                ? "bg-purple-950/50 border-purple-500/30 text-purple-200" 
+                : "bg-red-950/50 border-red-500/30 text-red-200"
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-lg ${otgModalResult.supported ? "bg-purple-500/20 text-purple-300" : "bg-red-500/20 text-red-300"}`}>
+                  <Usb className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-mono text-sm font-bold text-zinc-100">
+                    USB-C OTG Hardware Diagnostic Report
+                  </h4>
+                  <p className="text-[10px] font-mono text-zinc-400">
+                    Target Probe: Dummy Device VID 0x1234 / PID 0x5678 • WebUSB Spec
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setOtgModalResult(null)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              {/* Status Badge & Title */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
+                    otgModalResult.status === "SUPPORTED" || otgModalResult.status === "DEVICE_CONNECTED"
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      : "bg-red-500/20 text-red-300 border border-red-500/30"
+                  }`}>
+                    {otgModalResult.status === "SUPPORTED" 
+                      ? "✓ OTG HARDWARE SUPPORTED" 
+                      : otgModalResult.status === "DEVICE_CONNECTED" 
+                      ? "✓ OTG PERIPHERAL ATTACHED" 
+                      : "⚠ ENVIRONMENT UNSUPPORTED"}
+                  </span>
+                  <span className="font-mono text-[10px] text-zinc-400 px-2 py-0.5 bg-zinc-800/80 rounded border border-zinc-700">
+                    {otgModalResult.browserName}
+                  </span>
+                </div>
+
+                <h3 className="font-mono text-base font-bold text-zinc-100">
+                  {otgModalResult.title}
+                </h3>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  {otgModalResult.message}
+                </p>
+              </div>
+
+              {/* Technical Telemetry Matrix */}
+              <div className="bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 space-y-2 font-mono text-[11px]">
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span>WebUSB API (`navigator.usb`):</span>
+                  <span className={otgModalResult.hasWebUsb ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
+                    {otgModalResult.hasWebUsb ? "Present & Available" : "Missing / Blocked"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span>Cryptographic Secure Context (HTTPS):</span>
+                  <span className={otgModalResult.isSecureContext ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                    {otgModalResult.isSecureContext ? "Active (HTTPS Verified)" : "Insecure (Plain HTTP)"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span>Dummy USB Device Access Probe:</span>
+                  <span className={otgModalResult.promptTriggered ? "text-emerald-400 font-bold" : "text-zinc-400"}>
+                    {otgModalResult.promptTriggered ? "Native Prompt Dispatched (Verified)" : "Blocked Before Prompt"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span>Paired Peripherals Count:</span>
+                  <span className="text-zinc-200 font-bold">
+                    {otgModalResult.connectedDevicesCount}
+                  </span>
+                </div>
+              </div>
+
+              {/* Technical Details description */}
+              <div className="p-3 bg-zinc-950/60 rounded-lg border border-zinc-800/80 text-[10px] text-zinc-400 space-y-1 font-mono">
+                <span className="text-zinc-500 font-bold uppercase block text-[9px]">Technical Trace:</span>
+                <p className="leading-normal">{otgModalResult.technicalDetails}</p>
+              </div>
+
+              {/* Actionable Guidance */}
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2.5">
+                <HelpCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-200/90 leading-normal">
+                  {otgModalResult.recommendation}
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-5 py-3.5 bg-zinc-950/80 border-t border-zinc-800 flex items-center justify-between gap-3">
+              <button
+                onClick={() => {
+                  setOtgModalResult(null);
+                  setActiveTool("port_repair");
+                }}
+                className="px-3 py-1.5 bg-purple-900/60 hover:bg-purple-800 text-purple-200 rounded-lg font-mono text-xs font-semibold border border-purple-500/30 transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5 text-purple-400" />
+                <span>Open Port Repair</span>
+              </button>
+
+              <button
+                onClick={() => setOtgModalResult(null)}
+                className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-mono text-xs font-bold transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-3 glass-panel-header">
         <div className="flex items-center gap-2">
@@ -1309,7 +1458,17 @@ export default function RepairToolbox({
             Tact Virtual Workbench v1.2
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Quick Check USB-C OTG Diagnostic Button */}
+          <button
+            onClick={handleQuickCheckUsbCOtg}
+            disabled={isOtgChecking}
+            title="Perform a quick check for USB-C OTG availability by attempting to access a dummy USB device"
+            className="flex items-center gap-1.5 px-3 py-1 bg-purple-950/80 hover:bg-purple-900 text-purple-200 hover:text-white border border-purple-500/40 rounded-md font-mono text-xs font-bold transition-all shadow cursor-pointer active:scale-95"
+          >
+            <Usb className={`w-3.5 h-3.5 text-purple-400 ${isOtgChecking ? "animate-spin" : ""}`} />
+            <span>{isOtgChecking ? "Checking OTG..." : "Check USB-C OTG"}</span>
+          </button>
           
           <button
             onClick={handlePrint}
@@ -1548,6 +1707,17 @@ export default function RepairToolbox({
         >
           <Laptop className="w-3.5 h-3.5 text-cyan-400" />
           <span>Software Suites</span>
+        </button>
+        <button
+          onClick={() => setActiveTool("motherboard")}
+          className={`flex-1 min-w-[110px] flex items-center justify-center gap-2 py-2 px-3 font-mono text-xs font-medium transition-all rounded-md cursor-pointer ${
+            activeTool === "motherboard"
+              ? "bg-rose-950 text-rose-300 shadow-inner border border-rose-500/40"
+              : "text-rose-400 hover:text-rose-200"
+          }`}
+        >
+          <Cpu className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+          <span>Motherboard</span>
         </button>
       </div>
 
@@ -2227,7 +2397,8 @@ export default function RepairToolbox({
                             </div>
                             <p className="text-zinc-400 leading-normal font-sans">
                               To sort out or fix this node, use the <strong className="text-blue-300">
-                                {dev.id === "router" ? "Ping Probe" :
+                                {dev.id === "motherboard" ? "Motherboard Diagnostic" :
+                                 dev.id === "router" ? "Ping Probe" :
                                  dev.id === "mic" ? "Signal Probe" :
                                  dev.id === "screen" ? "Pixel Audit" :
                                  "Telemetry / Stress Test"}
@@ -2236,12 +2407,13 @@ export default function RepairToolbox({
                             <button
                               onClick={() => {
                                 const toolMap: Record<string, ToolType> = {
+                                  motherboard: "motherboard",
                                   router: "network_test",
                                   mic: "mic_analyzer",
                                   screen: "pixel_test",
                                   scraper: "system_info"
                                 };
-                                setActiveTool(toolMap[dev.id]);
+                                setActiveTool(toolMap[dev.id] || "motherboard");
                               }}
                               className="mt-0.5 self-start flex items-center gap-1 py-1 px-2 bg-blue-600/15 hover:bg-blue-600/25 text-blue-400 font-mono text-[9px] font-bold uppercase rounded border border-blue-500/20 cursor-pointer transition-all"
                             >
@@ -2963,6 +3135,14 @@ export default function RepairToolbox({
         {/* TOOL 15: SOFTWARE REPAIR SUITES */}
         {activeTool === "software_suites" && (
           <SoftwareSuitesTool onRepairCompleted={onRepairCompleted} />
+        )}
+
+        {/* TOOL 16: MOTHERBOARD DIAGNOSTIC & AUTO-FIX */}
+        {activeTool === "motherboard" && (
+          <MotherboardDiagnosticTool 
+            onRepairCompleted={onRepairCompleted} 
+            onOtgCheckRequested={(res) => setOtgModalResult(res)}
+          />
         )}
       </div>
 

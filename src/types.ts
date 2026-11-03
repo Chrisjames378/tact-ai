@@ -34,6 +34,27 @@ export interface DiagnosticData {
     platform: string;
     language: string;
   };
+  otgSupport?: {
+    supported: boolean;
+    secureContext: boolean;
+    hasWebUsb: boolean;
+    promptSucceeded: boolean;
+    deviceFound: boolean;
+    connectedDevicesCount: number;
+    message: string;
+    details: string;
+    testedAt: string;
+  };
+  motherboard?: {
+    healthScore: number;
+    problemsFound: number;
+    problemsResolved: number;
+    vrmStatus: string;
+    pmicStatus: string;
+    busStatus: string;
+    clockStatus: string;
+    lastRepairedAt?: string;
+  };
 }
 
 export type ToolType = 
@@ -52,4 +73,5 @@ export type ToolType =
   | "battery_conditioning"
   | "wireless_calibrator"
   | "haptic_tuner"
-  | "software_suites";
+  | "software_suites"
+  | "motherboard";

@@ -91,17 +91,34 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // WebUSB OTG Cable/Device Connection Listener
+  // WebUSB OTG Cable/Device Connection Listener & Pre-connected Device Check
   useEffect(() => {
     if (typeof navigator !== "undefined" && "usb" in navigator) {
       const handleConnect = (event: any) => {
         console.log('OTG Device Connected:', event.device?.productName || "Unknown OTG Device");
       };
 
+      const handleDisconnect = (event: any) => {
+        console.log('OTG Device Disconnected:', event.device?.productName || "Unknown OTG Device");
+      };
+
       (navigator as any).usb.addEventListener('connect', handleConnect);
+      (navigator as any).usb.addEventListener('disconnect', handleDisconnect);
+
+      // Check pre-connected devices on initial mount
+      (navigator as any).usb.getDevices().then((devices: any[]) => {
+        if (devices && devices.length > 0) {
+          devices.forEach((dev: any) => {
+            console.log('Pre-connected OTG Device Found:', dev.productName || "Unknown OTG Device");
+          });
+        }
+      }).catch((err: any) => {
+        console.debug("getDevices check on mount:", err);
+      });
 
       return () => {
         (navigator as any).usb.removeEventListener('connect', handleConnect);
+        (navigator as any).usb.removeEventListener('disconnect', handleDisconnect);
       };
     }
   }, []);
