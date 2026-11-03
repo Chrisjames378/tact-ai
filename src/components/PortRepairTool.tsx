@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Zap, Droplets, RefreshCw, Activity, ShieldCheck, AlertTriangle, Play, Square, CheckCircle2, Thermometer, Usb, Info, HelpCircle } from "lucide-react";
 import { performUsbCOtgDiagnostic, OtgDiagnosticResult } from "../utils/usbOtgCheck";
+import UsbCOtgScannerModal from "./UsbCOtgScannerModal";
 
 interface PortRepairToolProps {
   onRepairCompleted?: (deviceName: string, logs: string) => void;
@@ -32,6 +33,10 @@ export default function PortRepairTool({ onRepairCompleted, deviceName = "Primar
   const [showOtgHelp, setShowOtgHelp] = useState<boolean>(false);
   const [otgCheckResult, setOtgCheckResult] = useState<OtgDiagnosticResult | null>(null);
   const [isQuickChecking, setIsQuickChecking] = useState<boolean>(false);
+  const [isOtgScannerOpen, setIsOtgScannerOpen] = useState<boolean>(false);
+  const [otgScanProgress, setOtgScanProgress] = useState<number>(0);
+  const [otgScanPhase, setOtgScanPhase] = useState<number>(1);
+  const [otgScanPhaseLabel, setOtgScanPhaseLabel] = useState<string>("Initializing hardware bus probe...");
   const [repairLogs, setRepairLogs] = useState<string[]>([
     "[PORT DIAGNOSTIC] Initiating USB Power Delivery CC1/CC2 line scan...",
     "[PORT DIAGNOSTIC] Detected elevated CC line impedance: 14.2Ω (Threshold: <5.0Ω)",
@@ -149,11 +154,23 @@ export default function PortRepairTool({ onRepairCompleted, deviceName = "Primar
     }
   };
 
-  // Quick Check USB-C OTG availability via dummy device access
+  // Quick Check USB-C OTG availability via dummy device access with visual scanning HUD
   const handleQuickCheckOtg = async () => {
+    setIsOtgScannerOpen(true);
     setIsQuickChecking(true);
+    setOtgScanProgress(15);
+    setOtgScanPhase(1);
+    setOtgScanPhaseLabel("Phase 1/4: Cryptographic origin & secure context check (HTTPS)...");
+    setOtgCheckResult(null);
+
     try {
-      const result = await performUsbCOtgDiagnostic();
+      const result = await performUsbCOtgDiagnostic((phase, label) => {
+        setOtgScanPhase(phase);
+        setOtgScanPhaseLabel(`Phase ${phase}/4: ${label}`);
+        setOtgScanProgress(phase === 1 ? 25 : phase === 2 ? 50 : phase === 3 ? 75 : 90);
+      });
+      setOtgScanProgress(100);
+      setOtgScanPhaseLabel(`Probe Complete: ${result.title}`);
       setOtgCheckResult(result);
       setRepairLogs(prev => [
         ...prev,
@@ -161,6 +178,7 @@ export default function PortRepairTool({ onRepairCompleted, deviceName = "Primar
       ]);
     } catch (e: any) {
       console.error(e);
+      setOtgScanPhaseLabel("Diagnostic probe encountered an error");
     } finally {
       setIsQuickChecking(false);
     }
@@ -361,7 +379,19 @@ export default function PortRepairTool({ onRepairCompleted, deviceName = "Primar
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 p-5 space-y-5 rounded-lg border border-zinc-800/80">
+    <div className="flex flex-col h-full bg-zinc-950 p-5 space-y-5 rounded-lg border border-zinc-800/80 relative">
+      {/* Visual Scanning Animation & Diagnostic Modal */}
+      <UsbCOtgScannerModal
+        isOpen={isOtgScannerOpen}
+        isScanning={isQuickChecking}
+        scanProgress={otgScanProgress}
+        currentPhase={otgScanPhase}
+        currentPhaseLabel={otgScanPhaseLabel}
+        result={otgCheckResult}
+        onClose={() => setIsOtgScannerOpen(false)}
+        onRescan={handleQuickCheckOtg}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-zinc-800 pb-3">
         <div className="flex items-center gap-2.5">
@@ -488,11 +518,18 @@ export default function PortRepairTool({ onRepairCompleted, deviceName = "Primar
             <button
               onClick={handleQuickCheckOtg}
               disabled={isQuickChecking}
-              className="px-2.5 py-1.5 rounded bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/40 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
-              title="Test browser environment support for USB-C OTG by attempting dummy device access"
+              className={`relative overflow-hidden px-2.5 py-1.5 rounded bg-purple-950/80 hover:bg-purple-900 text-purple-200 hover:text-white border border-purple-500/40 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                isQuickChecking 
+                  ? "ring-2 ring-cyan-400 shadow-purple-500/50 text-cyan-200 border-cyan-400" 
+                  : ""
+              }`}
+              title="Test browser environment support for USB-C OTG with visual scanning animation"
             >
-              <Usb className={`w-3.5 h-3.5 text-purple-400 ${isQuickChecking ? "animate-spin" : ""}`} />
-              <span>{isQuickChecking ? "Testing OTG..." : "Quick Check OTG"}</span>
+              {isQuickChecking && (
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent animate-laser-h pointer-events-none" />
+              )}
+              <Usb className={`w-3.5 h-3.5 ${isQuickChecking ? "text-cyan-300 animate-spin" : "text-purple-400"}`} />
+              <span>{isQuickChecking ? "Scanning Bus..." : "Quick Check OTG"}</span>
             </button>
 
             <button

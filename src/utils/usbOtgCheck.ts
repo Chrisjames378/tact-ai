@@ -32,11 +32,20 @@ export interface OtgDiagnosticResult {
   }>;
 }
 
-export async function performUsbCOtgDiagnostic(): Promise<OtgDiagnosticResult> {
+export async function performUsbCOtgDiagnostic(
+  onProgress?: (phase: number, label: string) => void
+): Promise<OtgDiagnosticResult> {
   const isSecure = typeof window !== "undefined" && window.isSecureContext;
   const hasWebUsb = typeof navigator !== "undefined" && "usb" in navigator && !!(navigator as any).usb;
   const userAgent = typeof navigator !== "undefined" ? navigator.userAgent : "";
   const timestamp = new Date().toLocaleTimeString();
+
+  // Helper for micro-pacing to ensure visual scanner renders each phase
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+  // Phase 1: Cryptographic Origin & Secure Context
+  onProgress?.(1, "Inspecting cryptographic secure context (HTTPS / W3C)...");
+  if (onProgress) await delay(250);
 
   // Detect browser family
   let browserName = "Modern Browser";
@@ -48,6 +57,9 @@ export async function performUsbCOtgDiagnostic(): Promise<OtgDiagnosticResult> {
   else if (/safari/i.test(userAgent) && !/chrome/i.test(userAgent)) browserName = "Apple Safari";
 
   // Check 1: WebUSB API Existence
+  onProgress?.(2, "Interrogating WebUSB API & Host Controller bus (`navigator.usb`)...");
+  if (onProgress) await delay(300);
+
   if (!hasWebUsb) {
     const isSafari = /safari/i.test(userAgent) && !/chrome/i.test(userAgent);
     const isFirefox = /firefox/i.test(userAgent);
@@ -93,6 +105,9 @@ export async function performUsbCOtgDiagnostic(): Promise<OtgDiagnosticResult> {
   }
 
   // Check 3: Query pre-authorized devices
+  onProgress?.(3, "Transmitting dummy probe frame (VID 0x1234 / PID 0x5678) across OTG bus...");
+  if (onProgress) await delay(350);
+
   let preConnectedDevices: any[] = [];
   try {
     preConnectedDevices = await (navigator as any).usb.getDevices();
@@ -101,6 +116,7 @@ export async function performUsbCOtgDiagnostic(): Promise<OtgDiagnosticResult> {
   }
 
   // Check 4: Attempt access to dummy USB device (e.g., Vendor ID 0x1234, Product ID 0x5678)
+  onProgress?.(4, "Awaiting USB-C host controller response / device picker prompt...");
   try {
     // Attempting to access dummy USB device
     const device = await (navigator as any).usb.requestDevice({

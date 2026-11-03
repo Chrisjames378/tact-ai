@@ -5,6 +5,7 @@ import {
   Sliders, Play, Check, Usb, ArrowRight, Gauge, Radio
 } from "lucide-react";
 import { performUsbCOtgDiagnostic, OtgDiagnosticResult } from "../utils/usbOtgCheck";
+import UsbCOtgScannerModal from "./UsbCOtgScannerModal";
 
 interface MotherboardDiagnosticToolProps {
   onRepairCompleted?: (deviceName: string, logs: string) => void;
@@ -39,6 +40,10 @@ export default function MotherboardDiagnosticTool({
   const [repairingIssueId, setRepairingIssueId] = useState<string | null>(null);
   const [plusEnhancementsEnabled, setPlusEnhancementsEnabled] = useState<boolean>(true);
   const [otgChecking, setOtgChecking] = useState<boolean>(false);
+  const [isOtgScannerOpen, setIsOtgScannerOpen] = useState<boolean>(false);
+  const [otgScanProgress, setOtgScanProgress] = useState<number>(0);
+  const [otgScanPhase, setOtgScanPhase] = useState<number>(1);
+  const [otgScanPhaseLabel, setOtgScanPhaseLabel] = useState<string>("Initializing hardware bus probe...");
   const [localOtgResult, setLocalOtgResult] = useState<OtgDiagnosticResult | null>(null);
 
   // Live telemetry metrics
@@ -356,11 +361,23 @@ export default function MotherboardDiagnosticTool({
     }, 1000);
   };
 
-  // Perform USB-C OTG check
+  // Perform USB-C OTG check with visual scanning HUD
   const handleOtgCheck = async () => {
+    setIsOtgScannerOpen(true);
     setOtgChecking(true);
+    setOtgScanProgress(15);
+    setOtgScanPhase(1);
+    setOtgScanPhaseLabel("Phase 1/4: Cryptographic origin & secure context check (HTTPS)...");
+    setLocalOtgResult(null);
+
     try {
-      const result = await performUsbCOtgDiagnostic();
+      const result = await performUsbCOtgDiagnostic((phase, label) => {
+        setOtgScanPhase(phase);
+        setOtgScanPhaseLabel(`Phase ${phase}/4: ${label}`);
+        setOtgScanProgress(phase === 1 ? 25 : phase === 2 ? 50 : phase === 3 ? 75 : 90);
+      });
+      setOtgScanProgress(100);
+      setOtgScanPhaseLabel(`Probe Complete: ${result.title}`);
       setLocalOtgResult(result);
       onOtgCheckRequested?.(result);
       setDiagnosticLogs(prev => [
@@ -370,6 +387,7 @@ export default function MotherboardDiagnosticTool({
       ]);
     } catch (e: any) {
       console.error(e);
+      setOtgScanPhaseLabel("Diagnostic probe encountered an error");
     } finally {
       setOtgChecking(false);
     }
@@ -379,7 +397,19 @@ export default function MotherboardDiagnosticTool({
   const resolvedCount = issues.filter(i => i.status === "RESOLVED").length;
 
   return (
-    <div className="flex flex-col gap-5 h-full">
+    <div className="flex flex-col gap-5 h-full relative">
+      {/* Visual Scanning Animation & Diagnostic Modal */}
+      <UsbCOtgScannerModal
+        isOpen={isOtgScannerOpen}
+        isScanning={otgChecking}
+        scanProgress={otgScanProgress}
+        currentPhase={otgScanPhase}
+        currentPhaseLabel={otgScanPhaseLabel}
+        result={localOtgResult}
+        onClose={() => setIsOtgScannerOpen(false)}
+        onRescan={handleOtgCheck}
+      />
+
       {/* Top Header Card */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-4 shadow-lg">
         <div className="flex items-center gap-3.5">
@@ -411,15 +441,22 @@ export default function MotherboardDiagnosticTool({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Quick Check USB-C OTG Availability Button */}
+          {/* Quick Check USB-C OTG Availability Button with Visual Scanning Animation */}
           <button
             onClick={handleOtgCheck}
             disabled={otgChecking}
-            title="Perform a quick check for USB-C OTG availability in this browser environment"
-            className="flex items-center gap-2 px-3.5 py-2 bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-200 hover:text-white rounded-lg font-mono text-xs font-bold transition-all shadow cursor-pointer active:scale-95"
+            title="Perform a quick check for USB-C OTG availability with visual scanning animation"
+            className={`relative overflow-hidden flex items-center gap-2 px-3.5 py-2 bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-200 hover:text-white rounded-lg font-mono text-xs font-bold transition-all shadow cursor-pointer active:scale-95 ${
+              otgChecking 
+                ? "ring-2 ring-cyan-400 shadow-purple-500/50 text-cyan-200 border-cyan-400" 
+                : ""
+            }`}
           >
-            <Usb className={`w-3.5 h-3.5 text-purple-400 ${otgChecking ? "animate-spin" : ""}`} />
-            <span>{otgChecking ? "Checking OTG..." : "Check USB-C OTG"}</span>
+            {otgChecking && (
+              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent animate-laser-h pointer-events-none" />
+            )}
+            <Usb className={`w-3.5 h-3.5 ${otgChecking ? "text-cyan-300 animate-spin" : "text-purple-400"}`} />
+            <span>{otgChecking ? "Scanning Bus..." : "Check USB-C OTG"}</span>
           </button>
 
           <button

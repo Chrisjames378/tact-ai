@@ -374,8 +374,10 @@ server.on("upgrade", (request, socket, head) => {
   try {
     const host = request.headers.host || "localhost";
     const url = new URL(request.url || "/", `http://${host}`);
-    const validPaths = ["/ws", "/ws/", "/v1/responses", "/v1/responses/", "/api/ws"];
-    if (validPaths.includes(url.pathname)) {
+    const validPaths = ["/", "/ws", "/ws/", "/v1/responses", "/v1/responses/", "/api/ws", "/api/ws/"];
+    const isWebSocketPath = validPaths.includes(url.pathname) || url.pathname.startsWith("/ws") || url.pathname.startsWith("/api/ws");
+    
+    if (isWebSocketPath) {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
       });
@@ -617,6 +619,10 @@ wss.on("connection", (ws) => {
         error: "Malformed frame payload received."
       }));
     }
+  });
+
+  ws.on("error", (err) => {
+    console.warn("[WebSocket] Socket error handled:", err.message || err);
   });
 
   ws.on("close", () => {

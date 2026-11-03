@@ -1,12 +1,15 @@
 // Catch and suppress expected WebSocket/Vite HMR connection errors in the sandboxed preview.
 if (typeof window !== 'undefined') {
   const isWebSocketError = (msg: string) => {
-    return msg && (
-      msg.includes('WebSocket') || 
-      msg.includes('websocket') || 
-      msg.includes('connection') ||
-      msg.includes('closed without opened') ||
-      msg.includes('Vite HMR')
+    if (!msg || typeof msg !== 'string') return false;
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes('websocket') || 
+      lower.includes('ws://') || 
+      lower.includes('wss://') ||
+      lower.includes('closed without opened') ||
+      lower.includes('vite hmr') ||
+      lower.includes('failed to connect to socket')
     );
   };
 

@@ -32,6 +32,56 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+@keyframes laser-sweep-vertical {
+  0% { top: 0%; opacity: 0.1; }
+  25% { opacity: 0.9; }
+  50% { top: 100%; opacity: 0.9; }
+  75% { opacity: 0.9; }
+  100% { top: 0%; opacity: 0.1; }
+}
+
+@keyframes laser-sweep-horizontal {
+  0% { left: 0%; opacity: 0.2; }
+  50% { left: 100%; opacity: 0.9; }
+  100% { left: 0%; opacity: 0.2; }
+}
+
+@keyframes radar-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes radar-pulse-expand {
+  0% { transform: scale(0.7); opacity: 0.9; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes signal-ping {
+  0%, 100% { opacity: 0.3; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.8)); }
+}
+
+.animate-laser-v {
+  animation: laser-sweep-vertical 2.2s ease-in-out infinite;
+}
+
+.animate-laser-h {
+  animation: laser-sweep-horizontal 1.8s ease-in-out infinite;
+}
+
+.animate-radar-sweep {
+  animation: radar-spin 3s linear infinite;
+}
+
+.animate-radar-ping {
+  animation: radar-pulse-expand 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-signal-pin {
+  animation: signal-ping 1.2s ease-in-out infinite;
+}
+
 
 @media print {
   body * {

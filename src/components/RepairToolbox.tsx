@@ -20,6 +20,7 @@ import WirelessCalibratorTool from "./WirelessCalibratorTool";
 import HapticTunerTool from "./HapticTunerTool";
 import SoftwareSuitesTool from "./SoftwareSuitesTool";
 import MotherboardDiagnosticTool from "./MotherboardDiagnosticTool";
+import UsbCOtgScannerModal from "./UsbCOtgScannerModal";
 import { performUsbCOtgDiagnostic, OtgDiagnosticResult } from "../utils/usbOtgCheck";
 import { Laptop } from "lucide-react";
 
@@ -58,17 +59,34 @@ export default function RepairToolbox({
   const [repairProgress, setRepairProgress] = useState(0);
   const [repairLogs, setRepairLogs] = useState<string[]>([]);
 
-  // States for USB-C OTG Quick Check
+  // States for USB-C OTG Visual Scanner & Quick Check
+  const [isOtgScannerOpen, setIsOtgScannerOpen] = useState<boolean>(false);
   const [isOtgChecking, setIsOtgChecking] = useState<boolean>(false);
+  const [otgScanProgress, setOtgScanProgress] = useState<number>(0);
+  const [otgScanPhase, setOtgScanPhase] = useState<number>(1);
+  const [otgScanPhaseLabel, setOtgScanPhaseLabel] = useState<string>("Initializing hardware bus probe...");
   const [otgModalResult, setOtgModalResult] = useState<OtgDiagnosticResult | null>(null);
 
   const handleQuickCheckUsbCOtg = async () => {
+    setIsOtgScannerOpen(true);
     setIsOtgChecking(true);
+    setOtgScanProgress(15);
+    setOtgScanPhase(1);
+    setOtgScanPhaseLabel("Phase 1/4: Cryptographic origin & secure context check (HTTPS)...");
+    setOtgModalResult(null);
+
     try {
-      const result = await performUsbCOtgDiagnostic();
+      const result = await performUsbCOtgDiagnostic((phase, label) => {
+        setOtgScanPhase(phase);
+        setOtgScanPhaseLabel(`Phase ${phase}/4: ${label}`);
+        setOtgScanProgress(phase === 1 ? 25 : phase === 2 ? 50 : phase === 3 ? 75 : 90);
+      });
+      setOtgScanProgress(100);
+      setOtgScanPhaseLabel(`Probe Complete: ${result.title}`);
       setOtgModalResult(result);
     } catch (err) {
       console.error("OTG diagnostic error:", err);
+      setOtgScanPhaseLabel("Diagnostic probe encountered an error");
     } finally {
       setIsOtgChecking(false);
     }
@@ -146,6 +164,8 @@ export default function RepairToolbox({
   const [wsStatus, setWsStatus] = useState<"disconnected" | "connecting" | "connected" | "standby">("standby");
   const [wsLogs, setWsLogs] = useState<string[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+  const wsPingIntervalRef = useRef<any>(null);
+  const wsManualCloseRef = useRef<boolean>(false);
 
   // States for System Telemetry
   const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
@@ -1068,29 +1088,43 @@ export default function RepairToolbox({
 
   // WebSocket Connection Handlers
   const connectWebSocket = () => {
+    wsManualCloseRef.current = false;
     if (wsRef.current) {
       wsRef.current.close();
     }
+    if (wsPingIntervalRef.current) {
+      clearInterval(wsPingIntervalRef.current);
+      wsPingIntervalRef.current = null;
+    }
 
     setWsStatus("connecting");
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const targetUrl = `${wsProtocol}//${window.location.host}/ws`;
+
     setWsLogs([
       `[GATEWAY] Initializing socket handshake...`,
-      `[GATEWAY] Tunneling to: ${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`
+      `[GATEWAY] Tunneling to: ${targetUrl}`
     ]);
 
     try {
-      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const socket = new WebSocket(`${wsProtocol}//${window.location.host}`);
+      const socket = new WebSocket(targetUrl);
       wsRef.current = socket;
 
       socket.onopen = () => {
         setWsStatus("connected");
         setWsLogs(prev => [
           ...prev,
-          `[SUCCESS] Connection active. Gateway online. Ready for packet frames.`
+          `[SUCCESS] Connection active on ${targetUrl}. Gateway online.`
         ]);
         // Send initial ping to server
         socket.send(JSON.stringify({ type: "ping" }));
+
+        // Keepalive heartbeat interval
+        wsPingIntervalRef.current = setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: "ping", timestamp: Date.now() }));
+          }
+        }, 15000);
       };
 
       socket.onmessage = (event) => {
@@ -1099,12 +1133,12 @@ export default function RepairToolbox({
           setWsLogs(prev => [
             ...prev,
             `[RX] ${new Date().toLocaleTimeString()} -> ${JSON.stringify(parsed)}`
-          ]);
+          ].slice(-50));
         } catch (err) {
           setWsLogs(prev => [
             ...prev,
             `[RX] ${new Date().toLocaleTimeString()} -> ${event.data}`
-          ]);
+          ].slice(-50));
         }
       };
 
@@ -1112,16 +1146,20 @@ export default function RepairToolbox({
         console.warn("Handled socket gateway connection error:", error);
         setWsLogs(prev => [
           ...prev,
-          `[ERROR] Connection failed or endpoint is not reachable.`
-        ]);
+          `[ERROR] Transport exception on socket gateway.`
+        ].slice(-50));
       };
 
       socket.onclose = () => {
+        if (wsPingIntervalRef.current) {
+          clearInterval(wsPingIntervalRef.current);
+          wsPingIntervalRef.current = null;
+        }
         setWsStatus("standby");
         setWsLogs(prev => [
           ...prev,
           `[GATEWAY] Tunnel safely severed. Standby mode active.`
-        ]);
+        ].slice(-50));
         wsRef.current = null;
       };
     } catch (e: any) {
@@ -1129,11 +1167,16 @@ export default function RepairToolbox({
       setWsLogs(prev => [
         ...prev,
         `[CRITICAL] Initialization error: ${e.message || e}`
-      ]);
+      ].slice(-50));
     }
   };
 
   const closeWebSocket = () => {
+    wsManualCloseRef.current = true;
+    if (wsPingIntervalRef.current) {
+      clearInterval(wsPingIntervalRef.current);
+      wsPingIntervalRef.current = null;
+    }
     if (wsRef.current) {
       setWsLogs(prev => [
         ...prev,
@@ -1322,133 +1365,18 @@ export default function RepairToolbox({
     <div className="flex flex-col h-full glass-container rounded-xl overflow-hidden shadow-2xl relative">
       <PrintableLogTemplate logs={[...viresScanLogs, ...stressLogs, ...wsLogs, ...repairLogs]} report={stressReport} deviceName={"Local Device"} />
 
-      {/* USB-C OTG Quick Diagnostic Notification Modal */}
-      {otgModalResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-zinc-900 border border-zinc-700/90 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden animate-scale-up">
-            {/* Modal Header */}
-            <div className={`px-5 py-4 flex items-center justify-between border-b ${
-              otgModalResult.supported 
-                ? "bg-purple-950/50 border-purple-500/30 text-purple-200" 
-                : "bg-red-950/50 border-red-500/30 text-red-200"
-            }`}>
-              <div className="flex items-center gap-2.5">
-                <div className={`p-2 rounded-lg ${otgModalResult.supported ? "bg-purple-500/20 text-purple-300" : "bg-red-500/20 text-red-300"}`}>
-                  <Usb className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-mono text-sm font-bold text-zinc-100">
-                    USB-C OTG Hardware Diagnostic Report
-                  </h4>
-                  <p className="text-[10px] font-mono text-zinc-400">
-                    Target Probe: Dummy Device VID 0x1234 / PID 0x5678 • WebUSB Spec
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setOtgModalResult(null)}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 space-y-4">
-              {/* Status Badge & Title */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
-                    otgModalResult.status === "SUPPORTED" || otgModalResult.status === "DEVICE_CONNECTED"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                      : "bg-red-500/20 text-red-300 border border-red-500/30"
-                  }`}>
-                    {otgModalResult.status === "SUPPORTED" 
-                      ? "✓ OTG HARDWARE SUPPORTED" 
-                      : otgModalResult.status === "DEVICE_CONNECTED" 
-                      ? "✓ OTG PERIPHERAL ATTACHED" 
-                      : "⚠ ENVIRONMENT UNSUPPORTED"}
-                  </span>
-                  <span className="font-mono text-[10px] text-zinc-400 px-2 py-0.5 bg-zinc-800/80 rounded border border-zinc-700">
-                    {otgModalResult.browserName}
-                  </span>
-                </div>
-
-                <h3 className="font-mono text-base font-bold text-zinc-100">
-                  {otgModalResult.title}
-                </h3>
-                <p className="text-xs text-zinc-300 leading-relaxed">
-                  {otgModalResult.message}
-                </p>
-              </div>
-
-              {/* Technical Telemetry Matrix */}
-              <div className="bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 space-y-2 font-mono text-[11px]">
-                <div className="flex items-center justify-between text-zinc-400">
-                  <span>WebUSB API (`navigator.usb`):</span>
-                  <span className={otgModalResult.hasWebUsb ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
-                    {otgModalResult.hasWebUsb ? "Present & Available" : "Missing / Blocked"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-zinc-400">
-                  <span>Cryptographic Secure Context (HTTPS):</span>
-                  <span className={otgModalResult.isSecureContext ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
-                    {otgModalResult.isSecureContext ? "Active (HTTPS Verified)" : "Insecure (Plain HTTP)"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-zinc-400">
-                  <span>Dummy USB Device Access Probe:</span>
-                  <span className={otgModalResult.promptTriggered ? "text-emerald-400 font-bold" : "text-zinc-400"}>
-                    {otgModalResult.promptTriggered ? "Native Prompt Dispatched (Verified)" : "Blocked Before Prompt"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-zinc-400">
-                  <span>Paired Peripherals Count:</span>
-                  <span className="text-zinc-200 font-bold">
-                    {otgModalResult.connectedDevicesCount}
-                  </span>
-                </div>
-              </div>
-
-              {/* Technical Details description */}
-              <div className="p-3 bg-zinc-950/60 rounded-lg border border-zinc-800/80 text-[10px] text-zinc-400 space-y-1 font-mono">
-                <span className="text-zinc-500 font-bold uppercase block text-[9px]">Technical Trace:</span>
-                <p className="leading-normal">{otgModalResult.technicalDetails}</p>
-              </div>
-
-              {/* Actionable Guidance */}
-              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-start gap-2.5">
-                <HelpCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-200/90 leading-normal">
-                  {otgModalResult.recommendation}
-                </p>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-5 py-3.5 bg-zinc-950/80 border-t border-zinc-800 flex items-center justify-between gap-3">
-              <button
-                onClick={() => {
-                  setOtgModalResult(null);
-                  setActiveTool("port_repair");
-                }}
-                className="px-3 py-1.5 bg-purple-900/60 hover:bg-purple-800 text-purple-200 rounded-lg font-mono text-xs font-semibold border border-purple-500/30 transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Zap className="w-3.5 h-3.5 text-purple-400" />
-                <span>Open Port Repair</span>
-              </button>
-
-              <button
-                onClick={() => setOtgModalResult(null)}
-                className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-mono text-xs font-bold transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* USB-C OTG Visual Scanner & Diagnostic Modal */}
+      <UsbCOtgScannerModal
+        isOpen={isOtgScannerOpen}
+        isScanning={isOtgChecking}
+        scanProgress={otgScanProgress}
+        currentPhase={otgScanPhase}
+        currentPhaseLabel={otgScanPhaseLabel}
+        result={otgModalResult}
+        onClose={() => setIsOtgScannerOpen(false)}
+        onRescan={handleQuickCheckUsbCOtg}
+        onOpenPortRepair={() => setActiveTool("port_repair")}
+      />
 
       {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-3 glass-panel-header">
@@ -1459,15 +1387,22 @@ export default function RepairToolbox({
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Quick Check USB-C OTG Diagnostic Button */}
+          {/* Quick Check USB-C OTG Diagnostic Button with Visual Scanning Animation */}
           <button
             onClick={handleQuickCheckUsbCOtg}
             disabled={isOtgChecking}
-            title="Perform a quick check for USB-C OTG availability by attempting to access a dummy USB device"
-            className="flex items-center gap-1.5 px-3 py-1 bg-purple-950/80 hover:bg-purple-900 text-purple-200 hover:text-white border border-purple-500/40 rounded-md font-mono text-xs font-bold transition-all shadow cursor-pointer active:scale-95"
+            title="Perform a quick check for USB-C OTG availability with visual scanning animation"
+            className={`relative overflow-hidden flex items-center gap-1.5 px-3 py-1 bg-purple-950/80 hover:bg-purple-900 text-purple-200 hover:text-white border border-purple-500/40 rounded-md font-mono text-xs font-bold transition-all shadow cursor-pointer active:scale-95 ${
+              isOtgChecking 
+                ? "ring-2 ring-cyan-400 shadow-purple-500/50 text-cyan-200 border-cyan-400" 
+                : ""
+            }`}
           >
-            <Usb className={`w-3.5 h-3.5 text-purple-400 ${isOtgChecking ? "animate-spin" : ""}`} />
-            <span>{isOtgChecking ? "Checking OTG..." : "Check USB-C OTG"}</span>
+            {isOtgChecking && (
+              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent animate-laser-h pointer-events-none" />
+            )}
+            <Usb className={`w-3.5 h-3.5 ${isOtgChecking ? "text-cyan-300 animate-spin" : "text-purple-400"}`} />
+            <span>{isOtgChecking ? "Scanning Bus..." : "Check USB-C OTG"}</span>
           </button>
           
           <button

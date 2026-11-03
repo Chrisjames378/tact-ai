@@ -35,6 +35,9 @@ export default function WebSocketStudio() {
   const wsRef = useRef<WebSocket | null>(null);
   const pingStartRef = useRef<number>(0);
   const logsEndRef = useRef<HTMLDivElement | null>(null);
+  const heartbeatRef = useRef<any>(null);
+  const reconnectTimeoutRef = useRef<any>(null);
+  const manualDisconnectRef = useRef<boolean>(false);
 
   const getWsUrl = () => {
     if (typeof window === "undefined") return "ws://localhost:3000/ws";
@@ -53,7 +56,24 @@ export default function WebSocketStudio() {
     setFrames(prev => [frame, ...prev].slice(0, 50));
   };
 
+  const stopHeartbeat = () => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  };
+
+  const startHeartbeat = (socket: WebSocket) => {
+    stopHeartbeat();
+    heartbeatRef.current = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        sendPing(socket);
+      }
+    }, 10000);
+  };
+
   const connect = () => {
+    manualDisconnectRef.current = false;
     if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
       return;
     }
@@ -70,6 +90,7 @@ export default function WebSocketStudio() {
         setIsConnecting(false);
         addFrameLog("received", { type: "system_status", message: "WebSocket connection established.", url });
         sendPing(ws);
+        startHeartbeat(ws);
       };
 
       ws.onmessage = (event) => {
@@ -108,16 +129,27 @@ export default function WebSocketStudio() {
       };
 
       ws.onerror = (err) => {
-        console.error("[WebSocketStudio] Error:", err);
-        addFrameLog("received", { type: "error", message: "WebSocket transport error occurred." });
+        console.warn("[WebSocketStudio] Transport issue handled:", err);
+        addFrameLog("received", { type: "error", message: "WebSocket transport issue encountered." });
         setIsConnected(false);
         setIsConnecting(false);
       };
 
       ws.onclose = () => {
+        stopHeartbeat();
         setIsConnected(false);
         setIsConnecting(false);
         addFrameLog("received", { type: "system_status", message: "WebSocket connection closed." });
+
+        if (!manualDisconnectRef.current) {
+          console.log("[WebSocketStudio] Connection lost unexpectedly. Retrying in 3s...");
+          if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (!manualDisconnectRef.current) {
+              connect();
+            }
+          }, 3000);
+        }
       };
 
       wsRef.current = ws;
@@ -128,6 +160,12 @@ export default function WebSocketStudio() {
   };
 
   const disconnect = () => {
+    manualDisconnectRef.current = true;
+    stopHeartbeat();
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
