@@ -240,6 +240,10 @@ private fun BuilderScreen() {
 @Composable
 private fun SettingsScreen() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var approvals by remember { mutableStateOf(emptyList<GatewayClient.Approval>()) }
+    var approvalStatus by remember { mutableStateOf("Approval queue not loaded.") }
+    var approvalBusy by remember { mutableStateOf(false) }
     val existing = remember { GatewayClient.load(context) }
     var gatewayUrl by remember { mutableStateOf(existing.baseUrl) }
     var gatewayToken by remember { mutableStateOf(existing.token) }
@@ -269,7 +273,55 @@ private fun SettingsScreen() {
             }) { Text("Clear") }
         }
         Text(status, color = Mint, style = MaterialTheme.typography.bodySmall)
-        FeatureCard("Approval centre", "Sensitive actions must be reviewed before execution.", "Enabled") {}
+        Text("Approval centre", color = Color.White, style = MaterialTheme.typography.titleMedium)
+        Text("Review queued requests. Recording approval or denial does not execute an action.", color = Color.LightGray)
+        Button(onClick = {
+            approvalBusy = true
+            scope.launch {
+                try {
+                    approvals = withContext(Dispatchers.IO) { GatewayClient.loadApprovals(context) }
+                    approvalStatus = "${approvals.size} request(s) loaded."
+                } catch (e: Exception) {
+                    approvalStatus = e.message ?: "Could not load approval queue."
+                } finally { approvalBusy = false }
+            }
+        }, enabled = !approvalBusy) { Text(if (approvalBusy) "Loading…" else "Refresh approval queue") }
+        Text(approvalStatus, color = Mint, style = MaterialTheme.typography.bodySmall)
+        approvals.forEach { item ->
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2033))) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(item.action.replace('_', ' ').uppercase(), color = Mint, style = MaterialTheme.typography.labelMedium)
+                    Text(item.summary, color = Color.White)
+                    Text("Status: ${item.status}", color = Color.LightGray)
+                    if (item.status == "awaiting_user_approval") {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = {
+                                scope.launch {
+                                    approvalBusy = true
+                                    try {
+                                        withContext(Dispatchers.IO) { GatewayClient.decideApproval(context, item.id, "approved") }
+                                        approvals = withContext(Dispatchers.IO) { GatewayClient.loadApprovals(context) }
+                                        approvalStatus = "Approval decision recorded. No action executed."
+                                    } catch (e: Exception) { approvalStatus = e.message ?: "Decision failed." }
+                                    finally { approvalBusy = false }
+                                }
+                            }, enabled = !approvalBusy) { Text("Record approval") }
+                            Button(onClick = {
+                                scope.launch {
+                                    approvalBusy = true
+                                    try {
+                                        withContext(Dispatchers.IO) { GatewayClient.decideApproval(context, item.id, "denied") }
+                                        approvals = withContext(Dispatchers.IO) { GatewayClient.loadApprovals(context) }
+                                        approvalStatus = "Denial recorded. No action executed."
+                                    } catch (e: Exception) { approvalStatus = e.message ?: "Decision failed." }
+                                    finally { approvalBusy = false }
+                                }
+                            }, enabled = !approvalBusy) { Text("Deny") }
+                        }
+                    }
+                }
+            }
+        }
         FeatureCard("Privacy", "No contacts, messages, microphone or call data are accessed by this shell.", "View permissions") {}
         FeatureCard("AI connection", "Configure a server-side model provider; never embed API keys in the APK.", "Not connected") {}
     }
