@@ -149,12 +149,20 @@ private fun FeatureCard(title: String, description: String, action: String, onCl
 private fun AssistantScreen(value: String, onValueChange: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var reply by remember { mutableStateOf("") }
+    var conversation by remember { mutableStateOf(GatewayClient.loadHistory(context)) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Talk to TACT", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-        Text("Secure private HTTPS gateway connection. Provider keys stay server-side.", color = Color.LightGray)
+        Text("Secure private HTTPS gateway connection. Recent conversation history is encrypted on this device.", color = Color.LightGray)
+        conversation.forEach { message ->
+            Card(colors = CardDefaults.cardColors(containerColor = if (message.role == "user") Color(0xFF24213B) else Color(0xFF1B2930))) {
+                Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Text(if (message.role == "user") "YOU" else "TACT", color = Mint, style = MaterialTheme.typography.labelSmall)
+                    Text(message.content, color = Color.White)
+                }
+            }
+        }
         androidx.compose.material3.OutlinedTextField(
             value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(),
             label = { Text("What would you like help with?") },
@@ -163,14 +171,21 @@ private fun AssistantScreen(value: String, onValueChange: (String) -> Unit) {
         Button(onClick = {
             busy = true
             error = ""
-            reply = ""
             val prompt = value.trim()
+            val outgoing = conversation + GatewayClient.ChatMessage("user", prompt)
+            conversation = outgoing
+            GatewayClient.saveHistory(context, outgoing)
+            onValueChange("")
             scope.launch {
                 try {
-                    reply = withContext(Dispatchers.IO) { GatewayClient.chat(context, prompt) }
-                    onValueChange("")
+                    val response = withContext(Dispatchers.IO) { GatewayClient.chat(context, outgoing) }
+                    conversation = outgoing + GatewayClient.ChatMessage("assistant", response)
+                    GatewayClient.saveHistory(context, conversation)
                 } catch (e: Exception) {
                     error = e.message ?: "Unable to reach the gateway."
+                    conversation = outgoing.dropLast(1)
+                    GatewayClient.saveHistory(context, conversation)
+                    onValueChange(prompt)
                 } finally {
                     busy = false
                 }
@@ -179,10 +194,14 @@ private fun AssistantScreen(value: String, onValueChange: (String) -> Unit) {
             Text(if (busy) "Thinking…" else "Send to TACT")
         }
         if (error.isNotBlank()) Text(error, color = Color(0xFFFF9A9A))
-        if (reply.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF24213B))) {
-            Text(reply, color = Color.White, modifier = Modifier.padding(16.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = {
+                conversation = emptyList()
+                GatewayClient.clearHistory(context)
+                error = ""
+            }, enabled = conversation.isNotEmpty() && !busy) { Text("Clear conversation") }
         }
-        Text("Messages are sent only when you press Send. HTTPS is required.", color = Mint,
+        Text("Messages are sent only when you press Send. History is encrypted on this device.", color = Mint,
             style = MaterialTheme.typography.bodySmall)
     }
 }
