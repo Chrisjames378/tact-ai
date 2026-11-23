@@ -35,5 +35,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
