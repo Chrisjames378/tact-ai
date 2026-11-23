@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:net";
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 async function freePort() {
   const server = createServer();
@@ -16,12 +19,13 @@ async function freePort() {
 test("gateway exposes health and protects actions behind bearer authentication", async (t) => {
   const port = await freePort();
   const token = "test-token-with-enough-entropy";
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), "tact-approval-test-"));
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: new URL("..", import.meta.url),
-    env: { ...process.env, PORT: String(port), APP_TOKEN: token, MODEL_PROVIDER: "groq", GROQ_API_KEY: "" },
+    env: { ...process.env, PORT: String(port), APP_TOKEN: token, MODEL_PROVIDER: "groq", GROQ_API_KEY: "", DATA_DIR: dataDir },
     stdio: "ignore"
   });
-  t.after(() => child.kill("SIGTERM"));
+  t.after(async () => { child.kill("SIGTERM"); await rm(dataDir, { recursive: true, force: true }); });
 
   const base = `http://127.0.0.1:${port}`;
   let ready = false;
@@ -53,4 +57,25 @@ test("gateway exposes health and protects actions behind bearer authentication",
   const approval = await prepared.json();
   assert.equal(approval.approvalRequired, true);
   assert.equal(approval.status, "awaiting_user_approval");
+
+  const queue = await fetch(`${base}/v1/approvals`, {
+    headers: { authorization: `Bearer ${token}` }
+  }).then(r => r.json());
+  assert.equal(queue.approvals.length, 1);
+  assert.equal(queue.approvals[0].id, approval.approvalId);
+
+  const decision = await fetch(`${base}/v1/approvals/${approval.approvalId}/decision`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ decision: "approved" })
+  });
+  assert.equal(decision.status, 200);
+  const decisionBody = await decision.json();
+  assert.equal(decisionBody.approval.status, "approved");
+  assert.equal(decisionBody.executed, false);
+
+  const finalQueue = await fetch(`${base}/v1/approvals`, {
+    headers: { authorization: `Bearer ${token}` }
+  }).then(r => r.json());
+  assert.equal(finalQueue.approvals[0].status, "approved");
 });
