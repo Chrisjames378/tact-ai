@@ -131,8 +131,10 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { approvals: await readApprovals() });
     } catch (error) { return json(res, 500, { error: "Unable to read approval queue" }); }
   }
-  const approvalMatch = url.pathname.match(/^\\/v1\\/approvals\\/([0-9a-f-]+)\\/decision$/i);
-  if (req.method === "POST" && approvalMatch) {
+  const approvalPrefix = "/v1/approvals/";
+  const approvalId = url.pathname.startsWith(approvalPrefix) && url.pathname.endsWith("/decision")
+    ? url.pathname.slice(approvalPrefix.length, -"/decision".length) : "";
+  if (req.method === "POST" && /^[0-9a-f-]{36}$/i.test(approvalId)) {
     try {
       const body = await readBody(req);
       if (!["approved", "denied"].includes(body.decision)) {
@@ -140,7 +142,7 @@ const server = http.createServer(async (req, res) => {
       }
       const updated = await serializeApprovalWrite(async () => {
         const items = await readApprovals();
-        const item = items.find(entry => entry.id === approvalMatch[1]);
+        const item = items.find(entry => entry.id === approvalId);
         if (!item) return null;
         if (item.status !== "awaiting_user_approval") return item;
         item.status = body.decision;
