@@ -312,6 +312,25 @@ private fun SettingsScreen() {
             }) { Text("Clear") }
         }
         Text(status, color = Mint, style = MaterialTheme.typography.bodySmall)
+        var termuxStatus by remember { mutableStateOf("Not checked yet. Start the Termux companion first.") }
+        var termuxBusy by remember { mutableStateOf(false) }
+        Text("Termux companion", color = Color.White, style = MaterialTheme.typography.titleMedium)
+        Text("Optional local Python service on this phone. TACT continues to work when Termux is stopped.", color = Color.LightGray)
+        Button(onClick = {
+            termuxBusy = true
+            termuxStatus = "Checking localhost…"
+            scope.launch {
+                try {
+                    termuxStatus = withContext(Dispatchers.IO) { TermuxClient.checkHealth() }
+                } catch (e: Exception) {
+                    termuxStatus = "Not connected: " + (e.message ?: "Could not reach localhost:8765.")
+                } finally { termuxBusy = false }
+            }
+        }, enabled = !termuxBusy) { Text(if (termuxBusy) "Testing…" else "Test local connection") }
+        Text(termuxStatus, color = if (termuxStatus.startsWith("Connected")) Mint else Color.LightGray,
+            style = MaterialTheme.typography.bodySmall)
+        Text("Install guide: open the repository's termux/README.md. The companion binds to localhost only; never expose port 8765 to the internet.",
+            color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
         Text("Approval centre", color = Color.White, style = MaterialTheme.typography.titleMedium)
         Text("Review queued requests. Recording approval or denial does not execute an action.", color = Color.LightGray)
         Button(onClick = {
