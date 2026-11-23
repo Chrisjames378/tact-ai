@@ -31,6 +31,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -142,18 +146,42 @@ private fun FeatureCard(title: String, description: String, action: String, onCl
 
 @Composable
 private fun AssistantScreen(value: String, onValueChange: (String) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var reply by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Talk to TACT", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-        Text("The assistant interface is ready for a secure AI backend connection.", color = Color.LightGray)
+        Text("Secure private HTTPS gateway connection. Provider keys stay server-side.", color = Color.LightGray)
         androidx.compose.material3.OutlinedTextField(
             value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(),
             label = { Text("What would you like help with?") },
             minLines = 3
         )
-        Button(onClick = { /* Connected after backend configuration */ }, enabled = value.isNotBlank()) {
-            Text("Send when AI is connected")
+        Button(onClick = {
+            busy = true
+            error = ""
+            reply = ""
+            val prompt = value.trim()
+            scope.launch {
+                try {
+                    reply = withContext(Dispatchers.IO) { GatewayClient.chat(context, prompt) }
+                    onValueChange("")
+                } catch (e: Exception) {
+                    error = e.message ?: "Unable to reach the gateway."
+                } finally {
+                    busy = false
+                }
+            }
+        }, enabled = value.isNotBlank() && !busy) {
+            Text(if (busy) "Thinking…" else "Send to TACT")
         }
-        Text("No message is sent from this prototype yet.", color = Mint,
+        if (error.isNotBlank()) Text(error, color = Color(0xFFFF9A9A))
+        if (reply.isNotBlank()) Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF24213B))) {
+            Text(reply, color = Color.White, modifier = Modifier.padding(16.dp))
+        }
+        Text("Messages are sent only when you press Send. HTTPS is required.", color = Mint,
             style = MaterialTheme.typography.bodySmall)
     }
 }
@@ -191,8 +219,35 @@ private fun BuilderScreen() {
 
 @Composable
 private fun SettingsScreen() {
-    Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val context = LocalContext.current
+    val existing = remember { GatewayClient.load(context) }
+    var gatewayUrl by remember { mutableStateOf(existing.baseUrl) }
+    var gatewayToken by remember { mutableStateOf(existing.token) }
+    var status by remember { mutableStateOf(if (existing.baseUrl.isNotBlank()) "Gateway details saved on this device." else "Gateway not configured.") }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Control & privacy", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+        Text("AI gateway connection", color = Color.White, style = MaterialTheme.typography.titleMedium)
+        androidx.compose.material3.OutlinedTextField(value = gatewayUrl, onValueChange = { gatewayUrl = it },
+            modifier = Modifier.fillMaxWidth(), label = { Text("HTTPS gateway URL") }, singleLine = true)
+        androidx.compose.material3.OutlinedTextField(value = gatewayToken, onValueChange = { gatewayToken = it },
+            modifier = Modifier.fillMaxWidth(), label = { Text("App access token") }, singleLine = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = {
+                try {
+                    GatewayClient.save(context, gatewayUrl, gatewayToken)
+                    status = "Gateway saved; token encrypted with Android Keystore."
+                } catch (e: Exception) {
+                    status = e.message ?: "Could not save gateway settings."
+                }
+            }) { Text("Save securely") }
+            Button(onClick = {
+                GatewayClient.clear(context)
+                gatewayUrl = ""
+                gatewayToken = ""
+                status = "Gateway credentials cleared from this device."
+            }) { Text("Clear") }
+        }
+        Text(status, color = Mint, style = MaterialTheme.typography.bodySmall)
         FeatureCard("Approval centre", "Sensitive actions must be reviewed before execution.", "Enabled") {}
         FeatureCard("Privacy", "No contacts, messages, microphone or call data are accessed by this shell.", "View permissions") {}
         FeatureCard("AI connection", "Configure a server-side model provider; never embed API keys in the APK.", "Not connected") {}
