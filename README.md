@@ -20,3 +20,14 @@ Requirements: JDK 17, Android SDK 35.
 
 ## Safety
 All external actions must pass through an approval gate. Credentials belong in Android Keystore-backed storage or server-side secrets, never source control.
+
+
+## Personal workflow integrations
+
+The Builder tab includes a service directory for the user's working tools:
+- AI assistants and research: Gemini, ChatGPT, Claude, Grok, Genspark and Manus.
+- AI development: Google AI Studio and OpenAI Platform.
+- Advertising: X Ads and AdsGPT.
+- Build and publish: GitHub and Vercel.
+
+The directory is a catalogue, not a claim that accounts are connected. Each integration must pass its own supported OAuth/API setup and a connection test before being marked connected. API credentials stay on the gateway/server in environment secrets; they must never be embedded in the Android APK. Services without a verified public portal/API URL are left unlinked until configured. Publishing deployments, changing repositories, and modifying ad campaigns remain approval-gated.
