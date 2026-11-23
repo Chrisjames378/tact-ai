@@ -19,6 +19,47 @@ object GatewayClient {
     private const val KEY_ALIAS = "tact_guardian_gateway_v1"
     data class Config(val baseUrl: String, val token: String)
     data class ChatMessage(val role: String, val content: String)
+    data class Approval(val id: String, val action: String, val summary: String, val status: String)
+
+    fun loadApprovals(context: Context): List<Approval> {
+        val json = authenticatedRequest(context, "/v1/approvals", null)
+        val items = json.optJSONArray("approvals") ?: JSONArray()
+        return (0 until items.length()).map { i ->
+            val item = items.getJSONObject(i)
+            Approval(item.getString("id"), item.getString("action"), item.getString("summary"), item.getString("status"))
+        }
+    }
+
+    fun decideApproval(context: Context, id: String, decision: String) {
+        require(decision == "approved" || decision == "denied")
+        authenticatedRequest(context, "/v1/approvals/$id/decision", JSONObject().put("decision", decision))
+    }
+
+    private fun authenticatedRequest(context: Context, path: String, payload: JSONObject?): JSONObject {
+        val config = load(context)
+        require(config.baseUrl.startsWith("https://") && config.token.isNotBlank()) {
+            "Configure your HTTPS gateway URL and access token in Settings first."
+        }
+        val connection = (URL(config.baseUrl + path).openConnection() as HttpURLConnection).apply {
+            requestMethod = if (payload == null) "GET" else "POST"
+            connectTimeout = 15000
+            readTimeout = 30000
+            setRequestProperty("Authorization", "Bearer " + config.token)
+            if (payload != null) {
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+            }
+        }
+        try {
+            if (payload != null) connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val json = JSONObject(body.ifBlank { "{}" })
+            if (code !in 200..299) throw IllegalStateException(json.optString("error", "Gateway request failed (HTTP $code)."))
+            return json
+        } finally { connection.disconnect() }
+    }
 
     fun loadHistory(context: Context): List<ChatMessage> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
