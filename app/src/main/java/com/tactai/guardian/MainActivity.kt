@@ -246,12 +246,32 @@ private fun GuardianScreen() {
 
 @Composable
 private fun BuilderScreen() {
-    Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("App Builder", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-        Text("Your coding and deployment workspace.", color = Color.LightGray)
-        FeatureCard("GitHub", "Repository access and code review.", "Integration pending") {}
-        FeatureCard("Deployments", "Vercel, Railway and Render status.", "Integration pending") {}
-        FeatureCard("Databases", "Supabase and Neon project diagnostics.", "Integration pending") {}
+    val uriHandler = LocalUriHandler.current
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("App Builder & Integrations", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+        Text("Your AI tools, advertising workspace and build pipeline in one place.", color = Color.LightGray)
+        Text("SERVICE DIRECTORY", color = Mint, style = MaterialTheme.typography.labelMedium)
+        IntegrationCatalog.services.forEach { service ->
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2033))) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text(service.name, color = Color.White, style = MaterialTheme.typography.titleMedium)
+                        Text("Not connected", color = Color(0xFFFFC66D), style = MaterialTheme.typography.labelSmall)
+                    }
+                    Text(service.group.uppercase(), color = Mint, style = MaterialTheme.typography.labelSmall)
+                    Text(service.purpose, color = Color.LightGray)
+                    Text(service.setup, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                    if (service.portalUrl != null) {
+                        Button(onClick = { uriHandler.openUri(service.portalUrl) }) { Text("Open service") }
+                    } else {
+                        Text("Portal link not configured", color = Color(0xFFFFC66D), style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
+        Text("Connection status is intentionally shown as Not connected until authorization and a successful test are completed. API keys belong in server-side secrets, never in the APK. Publishing, ad spend and other external changes must use the approval centre.",
+            color = Mint, style = MaterialTheme.typography.bodySmall)
     }
 }
 
