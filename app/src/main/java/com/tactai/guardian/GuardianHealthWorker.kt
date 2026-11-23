@@ -30,14 +30,15 @@ class GuardianHealthWorker(context: Context, params: WorkerParameters) : Worker(
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 UNIQUE_WORK, ExistingPeriodicWorkPolicy.UPDATE, request
             )
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("scheduled_enabled", true).apply()
         }
 
         fun disable(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(UNIQUE_WORK)
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean("scheduled_enabled", false).apply()
         }
 
         fun isEnabled(context: Context): Boolean =
-            WorkManager.getInstance(context).getWorkInfosForUniqueWork(UNIQUE_WORK).get()
-                .any { !it.state.isFinished }
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("scheduled_enabled", false)
     }
 }
