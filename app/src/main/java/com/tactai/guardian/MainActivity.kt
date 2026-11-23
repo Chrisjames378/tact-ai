@@ -210,6 +210,9 @@ private fun AssistantScreen(value: String, onValueChange: (String) -> Unit) {
 private fun GuardianScreen() {
     val context = LocalContext.current
     var snapshot by remember { mutableStateOf(DeviceDiagnostics.read(context)) }
+    var scheduled by remember { mutableStateOf(GuardianHealthWorker.isEnabled(context)) }
+    val healthPrefs = remember { context.getSharedPreferences("tact_guardian_health", android.content.Context.MODE_PRIVATE) }
+    val lastCheck = healthPrefs.getLong("last_check_ms", 0L)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Phone Guardian", color = Color.White, style = MaterialTheme.typography.headlineMedium)
@@ -221,7 +224,22 @@ private fun GuardianScreen() {
         }
         FeatureCard("Available storage", String.format("%.1f GB", snapshot.availableStorageGb),
             "Refresh diagnostics") { snapshot = DeviceDiagnostics.read(context) }
-        Text("Read-only diagnostics use public Android APIs. More monitoring will be added only with clear permissions.",
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2033))) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Scheduled health checks", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                Text("Optional local-only battery and storage checks every 6 hours. No microphone, messages, contacts or network access.", color = Color.LightGray)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    androidx.compose.material3.Switch(checked = scheduled, onCheckedChange = { enabled ->
+                        scheduled = enabled
+                        if (enabled) GuardianHealthWorker.enable(context) else GuardianHealthWorker.disable(context)
+                    })
+                    Text(if (scheduled) "Scheduled checks enabled" else "Scheduled checks off", color = Mint)
+                }
+                Text(if (lastCheck > 0L) "Last check: ${java.util.Date(lastCheck)}" else "No scheduled check has run yet.",
+                    color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        Text("Read-only diagnostics use public Android APIs. Scheduled checks are optional and can be switched off here.",
             color = Mint, style = MaterialTheme.typography.bodySmall)
     }
 }
