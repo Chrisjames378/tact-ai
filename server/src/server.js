@@ -1,5 +1,7 @@
 import http from "node:http";
 import { timingSafeEqual, randomUUID } from "node:crypto";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 const PORT = Number(process.env.PORT || 8080);
 const APP_TOKEN = process.env.APP_TOKEN || "";
@@ -7,6 +9,31 @@ const MODEL_PROVIDER = process.env.MODEL_PROVIDER || "groq";
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const MAX_BODY = 64 * 1024;
+const DATA_DIR = process.env.DATA_DIR || "./data";
+const APPROVALS_FILE = path.join(DATA_DIR, "approvals.json");
+let approvalWrite = Promise.resolve();
+
+async function readApprovals() {
+  try {
+    const raw = await readFile(APPROVALS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+}
+async function writeApprovals(items) {
+  await mkdir(DATA_DIR, { recursive: true });
+  const temporary = APPROVALS_FILE + ".tmp";
+  await writeFile(temporary, JSON.stringify(items, null, 2), { mode: 0o600 });
+  await rename(temporary, APPROVALS_FILE);
+}
+function serializeApprovalWrite(operation) {
+  const next = approvalWrite.then(operation, operation);
+  approvalWrite = next.catch(() => {});
+  return next;
+}
 
 function json(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -80,17 +107,51 @@ const server = http.createServer(async (req, res) => {
       if (!allowed.includes(body.action) || typeof body.summary !== "string" || !body.summary.trim()) {
         return json(res, 400, { error: "Provide a supported action and a non-empty summary" });
       }
+      const approval = {
+        id: randomUUID(), action: body.action, summary: body.summary.trim().slice(0, 1000),
+        status: "awaiting_user_approval", createdAt: new Date().toISOString(), decidedAt: null
+      };
+      await serializeApprovalWrite(async () => {
+        const items = await readApprovals();
+        items.push(approval);
+        await writeApprovals(items.slice(-200));
+      });
       return json(res, 202, {
-        approvalRequired: true,
-        status: "awaiting_user_approval",
-        approvalId: randomUUID(),
-        action: body.action,
-        summary: body.summary.slice(0, 1000),
-        note: "This gateway only prepares approval requests. It does not execute external actions."
+        approvalRequired: true, approvalId: approval.id, status: approval.status,
+        action: approval.action, summary: approval.summary,
+        note: "Approval records a decision only. It does not execute the requested action."
       });
     } catch (error) {
       return json(res, error.status || 500, { error: error.message || "Internal error" });
     }
+  }
+  if (req.method === "GET" && url.pathname === "/v1/approvals") {
+    try {
+      await approvalWrite;
+      return json(res, 200, { approvals: await readApprovals() });
+    } catch (error) { return json(res, 500, { error: "Unable to read approval queue" }); }
+  }
+  const approvalMatch = url.pathname.match(/^\\/v1\\/approvals\\/([0-9a-f-]+)\\/decision$/i);
+  if (req.method === "POST" && approvalMatch) {
+    try {
+      const body = await readBody(req);
+      if (!["approved", "denied"].includes(body.decision)) {
+        return json(res, 400, { error: "decision must be approved or denied" });
+      }
+      const updated = await serializeApprovalWrite(async () => {
+        const items = await readApprovals();
+        const item = items.find(entry => entry.id === approvalMatch[1]);
+        if (!item) return null;
+        if (item.status !== "awaiting_user_approval") return item;
+        item.status = body.decision;
+        item.decidedAt = new Date().toISOString();
+        await writeApprovals(items);
+        return item;
+      });
+      if (!updated) return json(res, 404, { error: "Approval not found" });
+      return json(res, 200, { approval: updated, executed: false,
+        note: "The decision is recorded. No external action was executed." });
+    } catch (error) { return json(res, error.status || 500, { error: error.message || "Unable to record decision" }); }
   }
   return json(res, 404, { error: "Not found" });
 });
