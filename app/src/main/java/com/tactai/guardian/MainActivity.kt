@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -159,13 +160,21 @@ private fun AssistantScreen(value: String, onValueChange: (String) -> Unit) {
 
 @Composable
 private fun GuardianScreen() {
-    Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val context = LocalContext.current
+    var snapshot by remember { mutableStateOf(DeviceDiagnostics.read(context)) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Phone Guardian", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-        Text("Device checks will use Android's supported APIs and permissions.", color = Color.LightGray)
-        listOf("Battery and charging status", "Available storage", "App permission review",
-            "Connectivity status", "Background task health").forEach {
-            FeatureCard(it, "Permission-aware diagnostic module — integration pending.", "Planned") {}
+        Text("${snapshot.manufacturer} ${snapshot.model} · Android ${snapshot.androidVersion}",
+            color = Color.LightGray)
+        FeatureCard("Battery", snapshot.batteryPercent?.let { "$it%" } ?: "Not available",
+            if (snapshot.charging == true) "Charging" else "Refresh") {
+            snapshot = DeviceDiagnostics.read(context)
         }
+        FeatureCard("Available storage", String.format("%.1f GB", snapshot.availableStorageGb),
+            "Refresh diagnostics") { snapshot = DeviceDiagnostics.read(context) }
+        Text("Read-only diagnostics use public Android APIs. More monitoring will be added only with clear permissions.",
+            color = Mint, style = MaterialTheme.typography.bodySmall)
     }
 }
 
