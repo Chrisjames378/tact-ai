@@ -31,3 +31,8 @@ The Builder tab includes a service directory for the user's working tools:
 - Build and publish: GitHub and Vercel.
 
 The directory is a catalogue, not a claim that accounts are connected. Each integration must pass its own supported OAuth/API setup and a connection test before being marked connected. API credentials stay on the gateway/server in environment secrets; they must never be embedded in the Android APK. Services without a verified public portal/API URL are left unlinked until configured. Publishing deployments, changing repositories, and modifying ad campaigns remain approval-gated.
+
+
+## Optional Termux companion
+
+A Python/FastAPI companion service can run on the same phone through Termux. It binds to loopback only at `127.0.0.1:8765`; the Android app can test its `/health` endpoint from Settings. It is optional and does not replace the HTTPS cloud gateway. See [Termux companion setup](docs/TERMUX_COMPANION.md) and the [Termux folder](termux/README.md).
