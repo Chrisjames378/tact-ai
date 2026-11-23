@@ -29,6 +29,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -230,7 +231,8 @@ private fun SettingsScreen() {
         androidx.compose.material3.OutlinedTextField(value = gatewayUrl, onValueChange = { gatewayUrl = it },
             modifier = Modifier.fillMaxWidth(), label = { Text("HTTPS gateway URL") }, singleLine = true)
         androidx.compose.material3.OutlinedTextField(value = gatewayToken, onValueChange = { gatewayToken = it },
-            modifier = Modifier.fillMaxWidth(), label = { Text("App access token") }, singleLine = true)
+            modifier = Modifier.fillMaxWidth(), label = { Text("App access token") }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = {
                 try {
