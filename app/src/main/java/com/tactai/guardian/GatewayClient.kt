@@ -18,6 +18,39 @@ object GatewayClient {
     private const val PREFS = "tact_guardian_secure"
     private const val KEY_ALIAS = "tact_guardian_gateway_v1"
     data class Config(val baseUrl: String, val token: String)
+    data class ChatMessage(val role: String, val content: String)
+
+    fun loadHistory(context: Context): List<ChatMessage> {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val encrypted = prefs.getString("history_cipher", null) ?: return emptyList()
+        val iv = prefs.getString("history_iv", null) ?: return emptyList()
+        return try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, getKey(), GCMParameterSpec(128, android.util.Base64.decode(iv, android.util.Base64.NO_WRAP)))
+            val plain = String(cipher.doFinal(android.util.Base64.decode(encrypted, android.util.Base64.NO_WRAP)), Charsets.UTF_8)
+            val array = org.json.JSONArray(plain)
+            (0 until array.length()).map { i ->
+                val item = array.getJSONObject(i)
+                ChatMessage(item.getString("role"), item.getString("content"))
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    fun saveHistory(context: Context, messages: List<ChatMessage>) {
+        val array = org.json.JSONArray()
+        messages.takeLast(40).forEach { array.put(JSONObject().put("role", it.role).put("content", it.content)) }
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, getKey())
+        val encrypted = android.util.Base64.encodeToString(cipher.doFinal(array.toString().toByteArray(Charsets.UTF_8)), android.util.Base64.NO_WRAP)
+        val iv = android.util.Base64.encodeToString(cipher.iv, android.util.Base64.NO_WRAP)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("history_cipher", encrypted).putString("history_iv", iv).apply()
+    }
+
+    fun clearHistory(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove("history_cipher").remove("history_iv").apply()
+    }
 
     fun load(context: Context): Config {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -48,14 +81,16 @@ object GatewayClient {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
     }
 
-    fun chat(context: Context, message: String): String {
+    fun chat(context: Context, messages: List<ChatMessage>): String {
         val config = load(context)
         require(config.baseUrl.startsWith("https://") && config.token.isNotBlank()) {
             "Configure your HTTPS gateway URL and access token in Settings first."
         }
-        val payload = JSONObject().put("messages", JSONArray().put(
-            JSONObject().put("role", "user").put("content", message)
-        )).toString()
+        val payloadMessages = JSONArray()
+        messages.takeLast(20).forEach { item ->
+            payloadMessages.put(JSONObject().put("role", item.role).put("content", item.content))
+        }
+        val payload = JSONObject().put("messages", payloadMessages).toString()
         val connection = (URL(config.baseUrl + "/v1/chat").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15000
